@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { memes } from '../data/memes.js';
 import { searchMemes } from './search.js';
 
 const items = [
@@ -74,8 +75,15 @@ describe('searchMemes', () => {
     ]);
   });
 
-  it('uses a low confidence floor when no terms overlap', () => {
-    const [result] = searchMemes('spaceship banana orchestra', items);
-    expect(result.confidence).toBeLessThanOrEqual(35);
+  it('does not manufacture a match when no terms overlap', () => {
+    expect(searchMemes('spaceship banana orchestra', items)).toEqual([]);
+  });
+
+  it.each([
+    ['white vans', 'damn-daniel'],
+    ['skeptical blonde girl looking sideways in a car', 'side-eye-chloe'],
+    ['angry woman pointing at a confused white cat', 'woman-yelling-cat'],
+  ])('finds iconic catalog media for “%s”', (query, expectedId) => {
+    expect(searchMemes(query, memes)[0].item.id).toBe(expectedId);
   });
 });

@@ -120,6 +120,7 @@ export function searchMemes(query, items, filter = 'all') {
         originalIndex: index,
       };
     })
+    .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex)
     .map(({ originalIndex: _originalIndex, ...result }) => result);
 }
