@@ -4,3 +4,5 @@ dist/
 *.log
 tmp/
 tmp-qa/
+.vercel
+.env*
