@@ -11,7 +11,7 @@ const video = ({ id, youtubeId, ...item }) => ({
   ...item,
 });
 
-export const memes = [
+const canonicalMemes = [
   video({
     id: 'keyboard-cat',
     youtubeId: 'J---aiyznGQ',
@@ -380,6 +380,33 @@ export const memes = [
   },
 ];
 
+function inferPlatform(item) {
+  if (item.sourceUrl.includes('youtube.com')) return 'YouTube';
+  if (item.sourceUrl.includes('wikimedia.org') || item.sourceUrl.includes('wikipedia.org')) return 'Wikimedia';
+  if (item.sourceUrl.includes('x.com')) return 'X';
+  return 'Web';
+}
+
+function enrichCanonical(item) {
+  const platform = item.platform ?? inferPlatform(item);
+  return {
+    ...item,
+    platform,
+    originPlatform: item.originPlatform ?? platform,
+    community: item.community ?? 'Classic internet',
+    creatorUrl: item.creatorUrl ?? item.sourceUrl,
+    firstUploadUrl: item.firstUploadUrl ?? item.sourceUrl,
+    indexedAt: item.indexedAt ?? 'July 19, 2026',
+    capturedIn: item.capturedIn ?? item.location,
+    microtags: item.microtags ?? item.tags,
+    timelineLabels: item.timelineLabels ?? { start: item.firstUpload, peak: item.peak, now: '2026' },
+    nsfw: false,
+    spoiler: false,
+  };
+}
+
+export const memes = [...canonicalMemes.map(enrichCanonical), ...generatedCatalog];
+
 export const suggestions = [
   'white Vans kid',
   'woman yelling at a cat',
@@ -392,3 +419,4 @@ export const suggestions = [
   'girl smiling while a building burns',
   'old movie distracted boyfriend',
 ];
+import generatedCatalog from './catalog.generated.json';

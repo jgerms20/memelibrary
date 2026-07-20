@@ -41,10 +41,10 @@ describe('SearchExperience', () => {
 
   it('updates the selected detail when a result row is chosen', () => {
     renderExperience();
-    const result = screen.getByRole('button', { name: /open rickroll/i });
+    const result = screen.getByRole('button', { name: 'Open Woman Yelling at a Cat' });
     fireEvent.click(result);
-    expect(screen.getByRole('heading', { name: 'Rickroll' })).toBeInTheDocument();
-    expect(screen.getByText(/bait-and-switch links/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Woman Yelling at a Cat' })).toBeInTheDocument();
+    expect(screen.getByText(/angry woman pointing at a white cat/i)).toBeInTheDocument();
   });
 
   it('activates the privacy-enhanced player only after play', () => {

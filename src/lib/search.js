@@ -99,6 +99,7 @@ function scoreItem(item, query) {
 export function searchMemes(query, items, filter = 'all') {
   const eligible = items.filter((item) => filter === 'all' || item.mediaType === filter);
   const queryText = normalizeText(query);
+  const queryTokens = tokenize(queryText);
 
   if (!queryText) {
     return eligible.map((item, index) => ({
@@ -120,7 +121,11 @@ export function searchMemes(query, items, filter = 'all') {
         originalIndex: index,
       };
     })
-    .filter((result) => result.score > 0)
+    .filter((result) => {
+      if (result.score <= 0) return false;
+      if (queryTokens.length < 3 || queryTokens.length >= 5) return true;
+      return result.matchedTerms.length >= 2;
+    })
     .sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex)
     .map(({ originalIndex: _originalIndex, ...result }) => result);
 }
