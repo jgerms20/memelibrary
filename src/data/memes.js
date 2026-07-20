@@ -1,3 +1,6 @@
+import generatedCatalog from './catalog.generated.json';
+import { xMemes } from './xMemes.js';
+
 const ytThumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 const ytSource = (id) => `https://www.youtube.com/watch?v=${id}`;
 
@@ -400,12 +403,13 @@ function enrichCanonical(item) {
     capturedIn: item.capturedIn ?? item.location,
     microtags: item.microtags ?? item.tags,
     timelineLabels: item.timelineLabels ?? { start: item.firstUpload, peak: item.peak, now: '2026' },
+    nowStatus: item.nowStatus ?? 'Evergreen reference with linked source media and active remix use.',
     nsfw: false,
     spoiler: false,
   };
 }
 
-export const memes = [...canonicalMemes.map(enrichCanonical), ...generatedCatalog];
+export const memes = [...canonicalMemes.map(enrichCanonical), ...xMemes, ...generatedCatalog];
 
 export const suggestions = [
   'white Vans kid',
@@ -419,4 +423,3 @@ export const suggestions = [
   'girl smiling while a building burns',
   'old movie distracted boyfriend',
 ];
-import generatedCatalog from './catalog.generated.json';

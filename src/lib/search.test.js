@@ -66,6 +66,20 @@ describe('searchMemes', () => {
     expect(results.map((result) => result.item.id)).toEqual(['side-eye-chloe']);
   });
 
+  it('filters results using media, platform, and community facets', () => {
+    const facetedItems = items.map((item, index) => ({
+      ...item,
+      platform: index === 1 ? 'Reddit' : 'YouTube',
+      community: index === 1 ? 'Black Twitter' : 'Classic internet',
+    }));
+    const results = searchMemes('', facetedItems, {
+      media: 'image',
+      platform: 'Reddit',
+      community: 'Black Twitter',
+    });
+    expect(results.map((result) => result.item.id)).toEqual(['side-eye-chloe']);
+  });
+
   it('returns the catalog in stable order for an empty query', () => {
     const results = searchMemes('', items);
     expect(results.map((result) => result.item.id)).toEqual([
@@ -73,6 +87,7 @@ describe('searchMemes', () => {
       'side-eye-chloe',
       'confused-travolta',
     ]);
+    expect(results.every((result) => result.confidence === null)).toBe(true);
   });
 
   it('does not manufacture a match when no terms overlap', () => {

@@ -1,11 +1,7 @@
 import { useState } from 'react';
 
 function PlayIcon() {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M11 7.5 25 16 11 24.5Z" />
-    </svg>
-  );
+  return <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 7.5 25 16 11 24.5Z" /></svg>;
 }
 
 export default function MediaViewer({ item }) {
@@ -22,7 +18,18 @@ export default function MediaViewer({ item }) {
     );
   }
 
-  if (item.mediaType === 'video' && playing) {
+  if (item.embedUrl) {
+    const embedTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    return (
+      <div className="media-frame media-embed">
+        <div className="embed-fallback-copy"><strong>{item.title}</strong><span>Public post preview</span></div>
+        <iframe title={`${item.title} post`} src={`${item.embedUrl}&theme=${embedTheme}`} loading="lazy" allowFullScreen />
+        <a className="embed-source" href={item.sourceUrl} target="_blank" rel="noreferrer">Embed not loading? Open {item.platform}</a>
+      </div>
+    );
+  }
+
+  if (item.youtubeId && playing) {
     return (
       <div className="media-frame">
         <iframe
@@ -35,24 +42,30 @@ export default function MediaViewer({ item }) {
     );
   }
 
+  if (item.mediaType === 'video' && !item.youtubeId) {
+    return (
+      <div className="media-frame">
+        <video src={item.mediaUrl} controls muted loop playsInline onError={() => setFailed(true)}>
+          <track kind="captions" />
+        </video>
+        <span className="media-kind">VIDEO</span>
+      </div>
+    );
+  }
+
   return (
     <div className="media-frame">
       <img
         src={item.mediaUrl}
-        alt={item.mediaType === 'video' ? `${item.title} video thumbnail` : item.visual[0]}
+        alt={item.mediaType === 'video' ? `${item.title} video thumbnail` : item.visual?.[0] ?? item.title}
         onError={() => setFailed(true)}
       />
-      {item.mediaType === 'video' ? (
-        <button
-          className="play-button"
-          type="button"
-          aria-label={`Play ${item.title}`}
-          onClick={() => setPlaying(true)}
-        >
+      {item.youtubeId ? (
+        <button className="play-button" type="button" aria-label={`Play ${item.title}`} onClick={() => setPlaying(true)}>
           <PlayIcon />
         </button>
       ) : null}
-      <span className="media-kind">{item.mediaLabel ?? (item.mediaType === 'video' ? 'ORIGINAL VIDEO' : 'SOURCE IMAGE')}</span>
+      <span className="media-kind">{item.mediaLabel ?? (item.mediaType === 'gif' ? 'REACTION GIF' : item.mediaType === 'video' ? 'ORIGINAL VIDEO' : 'SOURCE IMAGE')}</span>
     </div>
   );
 }

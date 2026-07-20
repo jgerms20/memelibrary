@@ -2,9 +2,10 @@ export default function SourceTrail({ item }) {
   return (
     <div className="source-trail">
       <div className="rail-heading">
-        <span>SOURCE TRAIL</span>
+        <span>HOW IT SPREAD</span>
         <small>{item.title}</small>
       </div>
+      <p className="trail-intro">A linked timeline from first capture to how the reference lives online now.</p>
       <div className="trail-items">
         {item.trail.map((step, index) => (
           <div className={`trail-step tone-${step.tone}`} key={`${step.label}-${step.date}`}>
@@ -18,7 +19,7 @@ export default function SourceTrail({ item }) {
         ))}
       </div>
       <a className="trail-source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">
-        {item.sourceAction ?? 'View original source'}
+        {item.sourceAction ?? 'Open original source'}
       </a>
     </div>
   );

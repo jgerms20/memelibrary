@@ -16,5 +16,8 @@ describe('expanded catalog', () => {
     expect(memes.some((item) => item.community === 'Black Twitter')).toBe(true);
     expect(memes.some((item) => item.platform === 'Imgflip')).toBe(true);
     expect(memes.some((item) => item.platform === 'Reddit')).toBe(true);
+    expect(memes.filter((item) => item.platform === 'X').length).toBeGreaterThanOrEqual(10);
+    expect(memes.some((item) => item.title === 'Today Drained Me')).toBe(true);
+    expect(memes.some((item) => item.title === 'Mariah Carey: Oh Really? That Sucks')).toBe(true);
   });
 });

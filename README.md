@@ -1,12 +1,14 @@
-# Meme Atlas
+# Meme Library
 
-Meme Atlas is a visual search experience for finding the exact meme, reaction image, or cultural clip you half remember. Search by quote, mood, clothing, visual detail, or context, then inspect the original media, source trail, and cultural lifecycle.
+Meme Library finds the exact meme, reaction image, GIF, video, or cultural clip you half remember. Search by quote, mood, clothing, visual detail, community, platform, or context, then inspect the media, verified source links, spread timeline, and lifecycle.
 
 ## What works
 
-- Natural-language search across quotes, aliases, emotions, visual details, and usage contexts
-- Playable creator-hosted YouTube videos and directly rendered image sources
-- Video and image filters, confidence-ranked alternatives, source trails, and lifecycle charts
+- Natural-language recall search across 649 source-linked records
+- Real images, GIFs, privacy-enhanced YouTube playback, direct video, and verified public X embeds
+- Platform, media, and community filters with dedicated Trending and Saved views
+- Linked platform, creator, first-upload, capture, and current-status provenance
+- Persistent light and dark themes
 - Responsive desktop and mobile layouts
 
 ## Run it
@@ -20,4 +22,4 @@ Run the automated checks with `npm test -- --run` and build the production bundl
 
 ## Content note
 
-This investor MVP uses a small, curated catalog. Video playback points to creator or official YouTube uploads, and image entries retain source and attribution links. A production-scale release should add rights review, takedown handling, resilient media storage, and a multimodal ingestion pipeline before allowing downloads or broad redistribution.
+Media stays on its public source host; Meme Library stores search metadata and source links. Archive accounts may be curators rather than original creators. A larger production release should add a rights-review queue, takedown handling, resilient media health checks, and a server-side multimodal ingestion pipeline.

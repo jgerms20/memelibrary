@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { memes, suggestions } from '../data/memes.js';
+import { memes } from '../data/memes.js';
 import SearchExperience from './SearchExperience.jsx';
 
-function renderExperience() {
-  return render(<SearchExperience items={memes} suggestions={suggestions} />);
+function renderExperience(props = {}) {
+  return render(<SearchExperience items={memes} {...props} />);
 }
 
 describe('SearchExperience', () => {
@@ -26,10 +26,30 @@ describe('SearchExperience', () => {
     expect(screen.getByRole('heading', { name: 'Ultimate Dog Tease' })).toBeInTheDocument();
   });
 
-  it('runs a suggestion as a complete search', () => {
+  it('finds and embeds a requested X reaction video', () => {
     renderExperience();
-    fireEvent.click(screen.getByRole('button', { name: 'person overwhelmed by a rainbow' }));
-    expect(screen.getByRole('heading', { name: 'Double Rainbow' })).toBeInTheDocument();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'today drained me' } });
+    fireEvent.submit(search.closest('form'));
+    expect(screen.getByRole('heading', { name: 'Today Drained Me' })).toBeInTheDocument();
+    expect(screen.getByTitle('Today Drained Me post')).toHaveAttribute(
+      'src',
+      expect.stringContaining('platform.twitter.com/embed/Tweet.html?id=1554890639409545216'),
+    );
+    expect(screen.getByRole('link', { name: 'Embed not loading? Open X' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('x.com/allreactionvids/status/1554890639409545216'),
+    );
+  });
+
+  it('starts with a clean recall prompt instead of a prefilled example', () => {
+    renderExperience();
+    expect(screen.getByRole('searchbox')).toHaveValue('');
+    expect(screen.getByRole('searchbox')).toHaveAttribute(
+      'placeholder',
+      'Describe the reaction, quote, person, or moment.',
+    );
+    expect(screen.queryByText(/try these/i)).not.toBeInTheDocument();
   });
 
   it('filters the catalog to image results', () => {
@@ -37,6 +57,14 @@ describe('SearchExperience', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Image' }));
     expect(screen.getByRole('heading', { name: 'Woman Yelling at a Cat' })).toBeInTheDocument();
     expect(screen.queryByText('Keyboard Cat', { selector: 'h2' })).not.toBeInTheDocument();
+  });
+
+  it('filters the catalog by platform and community', () => {
+    renderExperience();
+    fireEvent.change(screen.getByLabelText('Platform'), { target: { value: 'Reddit' } });
+    expect(screen.getAllByText(/Reddit/i, { selector: '.platform-badge' }).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('Community'), { target: { value: 'Black Twitter' } });
+    expect(screen.getAllByText(/Black Twitter/i).length).toBeGreaterThan(0);
   });
 
   it('updates the selected detail when a result row is chosen', () => {
@@ -92,5 +120,48 @@ describe('SearchExperience', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use this' }));
     expect(await screen.findByRole('button', { name: 'Copied!' })).toBeInTheDocument();
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('youtube.com/watch'));
+  });
+
+  it('explains why the match ranked and how tagging works', () => {
+    renderExperience();
+    fireEvent.click(screen.getByRole('button', { name: 'Explain this match' }));
+    expect(screen.getByText(/matched across descriptive tags/i)).toBeInTheDocument();
+    expect(screen.getByText(/quotes, visuals, emotions, contexts/i)).toBeInTheDocument();
+  });
+
+  it('saves the selected meme through the provided saved-state action', () => {
+    const onToggleSaved = vi.fn();
+    renderExperience({ onToggleSaved, isSaved: () => false });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Keyboard Cat' }));
+    expect(onToggleSaved).toHaveBeenCalledWith('keyboard-cat');
+  });
+
+  it('offers a save control on every visible result row', () => {
+    const onToggleSaved = vi.fn();
+    renderExperience({ onToggleSaved, isSaved: () => false });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Damn Daniel from results' }));
+    expect(onToggleSaved).toHaveBeenCalledWith('damn-daniel');
+  });
+
+  it('uses normalized community facets, including animals', () => {
+    renderExperience();
+    expect(screen.getByRole('option', { name: 'TV & film' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Animals' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'TV / film' })).not.toBeInTheDocument();
+  });
+
+  it('includes collapsible full provenance for mobile layouts', () => {
+    renderExperience();
+    expect(screen.getByText('Full provenance & tags')).toBeInTheDocument();
+  });
+
+  it('links origin, creator, and first upload while showing dated lifecycle labels', () => {
+    renderExperience();
+    expect(screen.getAllByRole('link', { name: 'YouTube' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));
+    expect(screen.getAllByRole('link', { name: 'Charlie Schmidt' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));
+    expect(screen.getAllByRole('link', { name: 'June 7, 2007' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));
+    expect(screen.getAllByText('2007').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2009–2010').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2026').length).toBeGreaterThan(0);
   });
 });

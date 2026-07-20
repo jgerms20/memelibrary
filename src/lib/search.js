@@ -6,6 +6,10 @@ const FIELD_WEIGHTS = {
   emotions: 8,
   contexts: 7,
   tags: 5,
+  microtags: 6,
+  platform: 4,
+  community: 5,
+  capturedIn: 3,
   summary: 3,
 };
 
@@ -27,6 +31,28 @@ const SYNONYM_GROUPS = [
 const SYNONYM_INDEX = new Map();
 for (const group of SYNONYM_GROUPS) {
   for (const term of group) SYNONYM_INDEX.set(term, group);
+}
+
+export const COMMUNITY_FACETS = [
+  'Black Twitter',
+  'Stan Twitter',
+  'TV & film',
+  'Sports',
+  'Animals',
+  'Current',
+  'Classic internet',
+];
+
+export function communityFacetFor(item) {
+  const raw = normalizeText(item.community);
+  const tags = normalizeText([...(item.tags ?? []), ...(item.microtags ?? [])].join(' '));
+  if (raw.includes('black twitter')) return 'Black Twitter';
+  if (raw.includes('stan twitter')) return 'Stan Twitter';
+  if (raw.includes('tv film') || raw.includes('film') || raw.includes('television')) return 'TV & film';
+  if (raw.includes('sport')) return 'Sports';
+  if (/\b(cat|dog|animal|puppy|kitten|bird|horse|pet)\b/.test(`${raw} ${tags}`)) return 'Animals';
+  if (/current|reaction|relatable|wholesome/.test(raw)) return 'Current';
+  return 'Classic internet';
 }
 
 export function normalizeText(value = '') {
@@ -97,7 +123,17 @@ function scoreItem(item, query) {
 }
 
 export function searchMemes(query, items, filter = 'all') {
-  const eligible = items.filter((item) => filter === 'all' || item.mediaType === filter);
+  const facets = typeof filter === 'string'
+    ? { media: filter, platform: 'all', community: 'all' }
+    : { media: 'all', platform: 'all', community: 'all', ...filter };
+  const eligible = items.filter((item) => {
+    const mediaMatches = facets.media === 'all'
+      || item.mediaType === facets.media
+      || (facets.media === 'video' && item.mediaType === 'gif');
+    const platformMatches = facets.platform === 'all' || item.platform === facets.platform;
+    const communityMatches = facets.community === 'all' || communityFacetFor(item) === facets.community;
+    return mediaMatches && platformMatches && communityMatches;
+  });
   const queryText = normalizeText(query);
   const queryTokens = tokenize(queryText);
 
@@ -105,7 +141,7 @@ export function searchMemes(query, items, filter = 'all') {
     return eligible.map((item, index) => ({
       item,
       score: 0,
-      confidence: Math.max(72, (item.featuredConfidence ?? 92) - index * 2),
+      confidence: null,
       matchedTerms: [],
     }));
   }

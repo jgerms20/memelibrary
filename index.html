@@ -3,9 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Find the exact meme, reaction image, or video you are trying to remember." />
+    <meta name="description" content="Find, trace, and save the exact meme, reaction image, GIF, or video you are trying to remember." />
     <meta name="theme-color" content="#f8f8f4" />
-    <title>Meme Atlas — Cultural memory search</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      try {
+        const storedTheme = localStorage.getItem('meme-library:theme');
+        const theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
+    <title>Meme Library — Find your meme</title>
   </head>
   <body>
     <div id="root"></div>
