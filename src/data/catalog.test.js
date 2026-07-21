@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import generatedCatalog from './catalog.generated.json';
 import { memes } from './memes.js';
 
 describe('expanded catalog', () => {
+  it('keeps a large, current, source-linked mix of generated media', () => {
+    const ids = generatedCatalog.map((item) => item.id);
+    const mediaTypes = new Set(generatedCatalog.map((item) => item.mediaType));
+    const today = new Date().toISOString().slice(0, 10);
+
+    expect(generatedCatalog.length).toBeGreaterThanOrEqual(1_000);
+    expect(new Set(ids).size).toBe(generatedCatalog.length);
+    expect(generatedCatalog.every((item) => /^https?:\/\//.test(item.mediaUrl))).toBe(true);
+    expect(generatedCatalog.every((item) => /^https?:\/\//.test(item.sourceUrl))).toBe(true);
+    expect(generatedCatalog.every((item) => !Number.isNaN(Date.parse(item.indexedAt)))).toBe(true);
+    expect(generatedCatalog.some((item) => item.indexedAt === today)).toBe(true);
+    expect(mediaTypes).toEqual(new Set(['image', 'gif', 'video']));
+  });
+
   it('contains at least 500 unique safe source-linked records', () => {
     expect(memes.length).toBeGreaterThanOrEqual(500);
     expect(new Set(memes.map((item) => item.id)).size).toBe(memes.length);

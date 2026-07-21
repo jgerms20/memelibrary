@@ -1,8 +1,11 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const OUTPUT = resolve('src/data/catalog.generated.json');
-const INDEXED_AT = 'July 19, 2026';
+const MINIMUM = 1_000;
+const MAXIMUM = 5_000;
+const INDEXED_AT = new Date().toISOString().slice(0, 10);
 const SUBREDDITS = [
   ['reactiongifs', 170, 'Reaction GIFs'],
   ['BlackPeopleTwitter', 120, 'Black Twitter'],
@@ -18,6 +21,19 @@ const SUBREDDITS = [
   ['funny', 30, 'Current memes'],
   ['me_irl', 30, 'Relatable'],
   ['ComedyCemetery', 30, 'Internet archive'],
+  ['WhitePeopleTwitter', 90, 'Internet culture'],
+  ['HistoryMemes', 80, 'Culture and history'],
+  ['starterpacks', 80, 'Internet culture'],
+  ['dankmemes', 80, 'Current memes'],
+  ['ProgrammerHumor', 80, 'Tech culture'],
+  ['PrequelMemes', 80, 'TV / film'],
+  ['marvelmemes', 70, 'TV / film'],
+  ['lotrmemes', 70, 'TV / film'],
+  ['AdviceAnimals', 80, 'Classic internet'],
+  ['meirl', 60, 'Relatable'],
+  ['technicallythetruth', 60, 'Internet culture'],
+  ['trippinthroughtime', 60, 'Culture and history'],
+  ['terriblefacebookmemes', 50, 'Internet archive'],
 ];
 
 const STOP_WORDS = new Set([
@@ -45,7 +61,9 @@ function tagsFrom(value, extras = []) {
 
 function normalizeMediaUrl(url) {
   if (!url) return null;
-  if (url.includes('imgur.com') && url.endsWith('.gifv')) return url.replace(/\.gifv$/, '.mp4');
+  if (/^https:\/\/i\.imgur\.com\/[^?]+\.(?:gif|gifv)(?:\?|$)/i.test(url)) {
+    return url.replace(/\.(?:gif|gifv)(?=\?|$)/i, '.mp4');
+  }
   return url;
 }
 
@@ -54,6 +72,18 @@ function mediaTypeFor(url) {
   if (pathname.endsWith('.mp4') || pathname.endsWith('.webm')) return 'video';
   if (pathname.endsWith('.gif')) return 'gif';
   return 'image';
+}
+
+function normalizeStoredRecord(record) {
+  const mediaUrl = normalizeMediaUrl(record.mediaUrl);
+  if (!mediaUrl || mediaUrl === record.mediaUrl) return record;
+  return {
+    ...record,
+    mediaUrl,
+    downloadUrl: mediaUrl,
+    mediaType: mediaTypeFor(mediaUrl),
+    indexedAt: INDEXED_AT,
+  };
 }
 
 function lifecycleFor(ups = 0) {
@@ -160,7 +190,10 @@ function normalizeImgflip(item) {
 }
 
 async function getJson(url) {
-  const response = await fetch(url, { headers: { 'User-Agent': 'MemeLibraryCatalog/2.0' } });
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'MemeLibraryCatalog/2.0' },
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!response.ok) throw new Error(`${response.status} ${url}`);
   return response.json();
 }
@@ -168,7 +201,14 @@ async function getJson(url) {
 async function collectSubreddit(subreddit, target, community) {
   const records = new Map();
   for (let attempt = 0; attempt < 18 && records.size < target; attempt += 1) {
-    const data = await getJson(`https://meme-api.com/gimme/${subreddit}/50`);
+    let data;
+    try {
+      data = await getJson(`https://meme-api.com/gimme/${subreddit}/50`);
+    } catch (error) {
+      if (records.size === 0) throw error;
+      console.warn(`Stopped r/${subreddit} after ${records.size} records: ${error.message}`);
+      break;
+    }
     for (const item of data.memes || []) {
       if (item.nsfw || item.spoiler || !item.url || !item.postLink) continue;
       const mediaUrl = normalizeMediaUrl(item.url);
@@ -181,22 +221,76 @@ async function collectSubreddit(subreddit, target, community) {
   return [...records.values()];
 }
 
-const [imgflipData, ...redditGroups] = await Promise.all([
-  getJson('https://api.imgflip.com/get_memes'),
-  ...SUBREDDITS.map(([subreddit, target, community]) => collectSubreddit(subreddit, target, community)),
-]);
-
-const imgflipRecords = (imgflipData.data?.memes || []).map(normalizeImgflip);
-const deduped = new Map();
-for (const record of [...imgflipRecords, ...redditGroups.flat()]) {
-  if (!record.mediaUrl || deduped.has(record.mediaUrl)) continue;
-  deduped.set(record.mediaUrl, record);
+async function loadExistingCatalog() {
+  try {
+    const catalog = JSON.parse(await readFile(OUTPUT, 'utf8'));
+    if (!Array.isArray(catalog)) throw new TypeError(`${OUTPUT} must contain an array.`);
+    return catalog;
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
 }
 
-const catalog = [...deduped.values()];
-if (catalog.length < 487) {
-  throw new Error(`Catalog generation produced ${catalog.length}; expected at least 487 generated records.`);
+export function mergeCatalog(existing, incoming, maximum = MAXIMUM) {
+  if (!Number.isInteger(maximum) || maximum < 1) {
+    throw new TypeError('maximum must be a positive integer.');
+  }
+
+  const ids = new Set();
+  const mediaUrls = new Set();
+  const merged = [];
+
+  for (const record of [...existing, ...incoming]) {
+    if (!record?.id || !record.mediaUrl || ids.has(record.id) || mediaUrls.has(record.mediaUrl)) continue;
+    ids.add(record.id);
+    mediaUrls.add(record.mediaUrl);
+    merged.push(record);
+    if (merged.length === maximum) break;
+  }
+
+  return merged;
 }
 
-await writeFile(OUTPUT, `${JSON.stringify(catalog, null, 2)}\n`);
-console.log(`Wrote ${catalog.length} source-linked records to ${OUTPUT}.`);
+export async function refreshCatalog() {
+  const existingCatalog = (await loadExistingCatalog()).map(normalizeStoredRecord);
+  const sources = [
+    {
+      name: 'Imgflip',
+      collect: async () => {
+        const data = await getJson('https://api.imgflip.com/get_memes');
+        return (data.data?.memes || []).map(normalizeImgflip);
+      },
+    },
+    ...SUBREDDITS.map(([subreddit, target, community]) => ({
+      name: `r/${subreddit}`,
+      collect: () => collectSubreddit(subreddit, target, community),
+    })),
+  ];
+
+  const settledSources = await Promise.allSettled(sources.map((source) => source.collect()));
+  const incoming = [];
+  for (const [index, result] of settledSources.entries()) {
+    if (result.status === 'fulfilled') {
+      incoming.push(...result.value);
+    } else {
+      console.warn(`Skipped ${sources[index].name}: ${result.reason?.message || result.reason}`);
+    }
+  }
+
+  const catalog = mergeCatalog(existingCatalog, incoming, MAXIMUM);
+  if (catalog.length < existingCatalog.length) {
+    throw new Error(`Catalog refresh would shrink from ${existingCatalog.length} to ${catalog.length} records.`);
+  }
+  if (catalog.length < MINIMUM) {
+    throw new Error(`Catalog refresh produced ${catalog.length}; expected at least ${MINIMUM} records.`);
+  }
+
+  await writeFile(OUTPUT, `${JSON.stringify(catalog, null, 2)}\n`);
+  console.log(`Wrote ${catalog.length} source-linked records (${catalog.length - existingCatalog.length} added) to ${OUTPUT}.`);
+  return catalog;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  await refreshCatalog();
+}
