@@ -324,6 +324,8 @@
   background: #18171c;
 }
 
+.media-shell { width: 100%; min-width: 0; }
+
 .media-frame img,
 .media-frame video,
 .media-frame iframe {
@@ -339,17 +341,23 @@
 .embed-fallback-copy { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; color: var(--muted); text-align: center; }
 .embed-fallback-copy strong { color: var(--ink); font-family: var(--display); font-size: 1.8rem; text-transform: uppercase; }
 .embed-fallback-copy span { font-family: var(--mono); font-size: 0.68rem; }
-.embed-source { position: absolute; z-index: 3; right: 8px; bottom: 8px; padding: 6px 8px; background: var(--ink); color: var(--paper-bright); font-family: var(--mono); font-size: 0.62rem; text-decoration: none; }
+.embed-source { padding: 4px 7px; background: var(--ink); color: var(--paper-bright); font-family: var(--mono); font-size: 0.62rem; text-decoration: none; }
 
-.media-frame:not(.media-still)::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 22%;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.64));
-  content: "";
-  pointer-events: none;
+.media-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  padding: 6px 2px 0;
+}
+
+.media-caption {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .play-button {
@@ -375,20 +383,6 @@
 }
 
 .play-button svg { width: 34px; fill: var(--ink); }
-
-.media-kind {
-  position: absolute;
-  z-index: 2;
-  bottom: 11px;
-  left: 12px;
-  padding: 4px 7px;
-  background: var(--ink);
-  color: #fff;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
 
 .media-fallback {
   display: grid;

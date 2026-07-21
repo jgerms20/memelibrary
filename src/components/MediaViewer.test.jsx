@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import MediaViewer from './MediaViewer.jsx';
 
@@ -50,5 +50,50 @@ describe('MediaViewer', () => {
 
     expect(screen.getByTitle('Today Drained Me post')).toBeInTheDocument();
     expect(container.querySelector('.media-frame')).toHaveClass('media-embed');
+  });
+
+  it('falls back to the X embed when a resolved MP4 fails at runtime', () => {
+    const { container } = render(
+      <MediaViewer
+        item={{
+          ...baseItem,
+          directVideoUrl: 'https://video.twimg.com/broken.mp4',
+          embedUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1',
+        }}
+      />,
+    );
+
+    fireEvent.error(container.querySelector('video'));
+    expect(screen.getByTitle('Today Drained Me post')).toBeInTheDocument();
+    expect(screen.queryByTestId('media-fallback')).not.toBeInTheDocument();
+  });
+
+  it('prefers YouTube playback over an available social embed', () => {
+    const { container } = render(
+      <MediaViewer
+        item={{
+          ...baseItem,
+          youtubeId: 'abc123',
+          embedUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1',
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play Today Drained Me' }));
+    expect(screen.getByTitle('Today Drained Me video player')).toHaveAttribute(
+      'src',
+      expect.stringContaining('youtube-nocookie.com/embed/abc123'),
+    );
+    expect(container.querySelector('iframe')).toBeInTheDocument();
+  });
+
+  it('keeps media labels outside the visible asset and native controls', () => {
+    const { container } = render(
+      <MediaViewer item={{ ...baseItem, mediaType: 'image', mediaUrl: 'https://example.com/image.jpg' }} />,
+    );
+
+    const frame = container.querySelector('.media-frame');
+    expect(frame).not.toContainElement(screen.getByText('REACTION VIDEO'));
+    expect(screen.getByText('REACTION VIDEO')).toHaveClass('media-caption');
   });
 });
