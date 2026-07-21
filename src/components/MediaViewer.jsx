@@ -18,12 +18,38 @@ export default function MediaViewer({ item }) {
     );
   }
 
+  if (item.directVideoUrl) {
+    return (
+      <div className="media-frame media-video">
+        <video
+          src={item.directVideoUrl}
+          poster={item.posterUrl}
+          controls
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onError={() => setFailed(true)}
+        >
+          <track kind="captions" />
+        </video>
+        <span className="media-kind">{item.mediaLabel ?? 'REACTION VIDEO'}</span>
+      </div>
+    );
+  }
+
   if (item.embedUrl) {
     const embedTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     return (
       <div className="media-frame media-embed">
         <div className="embed-fallback-copy"><strong>{item.title}</strong><span>Public post preview</span></div>
-        <iframe title={`${item.title} post`} src={`${item.embedUrl}&theme=${embedTheme}`} loading="lazy" allowFullScreen />
+        <iframe
+          title={`${item.title} post`}
+          src={`${item.embedUrl}&theme=${embedTheme}`}
+          loading="lazy"
+          scrolling="no"
+          allowFullScreen
+        />
         <a className="embed-source" href={item.sourceUrl} target="_blank" rel="noreferrer">Embed not loading? Open {item.platform}</a>
       </div>
     );
@@ -44,8 +70,8 @@ export default function MediaViewer({ item }) {
 
   if (item.mediaType === 'video' && !item.youtubeId) {
     return (
-      <div className="media-frame">
-        <video src={item.mediaUrl} controls muted loop playsInline onError={() => setFailed(true)}>
+      <div className="media-frame media-video">
+        <video src={item.mediaUrl} controls muted loop playsInline preload="metadata" onError={() => setFailed(true)}>
           <track kind="captions" />
         </video>
         <span className="media-kind">VIDEO</span>
@@ -54,7 +80,7 @@ export default function MediaViewer({ item }) {
   }
 
   return (
-    <div className="media-frame">
+    <div className="media-frame media-still">
       <img
         src={item.mediaUrl}
         alt={item.mediaType === 'video' ? `${item.title} video thumbnail` : item.visual?.[0] ?? item.title}
@@ -65,7 +91,7 @@ export default function MediaViewer({ item }) {
           <PlayIcon />
         </button>
       ) : null}
-      <span className="media-kind">{item.mediaLabel ?? (item.mediaType === 'gif' ? 'REACTION GIF' : item.mediaType === 'video' ? 'ORIGINAL VIDEO' : 'SOURCE IMAGE')}</span>
+      {item.mediaType === 'video' ? <span className="media-kind">{item.mediaLabel ?? 'ORIGINAL VIDEO'}</span> : null}
     </div>
   );
 }

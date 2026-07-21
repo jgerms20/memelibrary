@@ -330,17 +330,18 @@
   width: 100%;
   height: 100%;
   border: 0;
-  object-fit: cover;
+  object-fit: contain;
 }
 
-.media-embed { min-height: 320px; aspect-ratio: auto; background: var(--paper-bright); }
-.media-embed iframe { position: relative; z-index: 1; min-height: 320px; background: transparent; }
+.media-still { background: #0d0d0f; }
+.media-embed { aspect-ratio: 16 / 9; background: var(--paper-bright); }
+.media-embed iframe { position: relative; z-index: 1; background: transparent; }
 .embed-fallback-copy { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; color: var(--muted); text-align: center; }
 .embed-fallback-copy strong { color: var(--ink); font-family: var(--display); font-size: 1.8rem; text-transform: uppercase; }
 .embed-fallback-copy span { font-family: var(--mono); font-size: 0.68rem; }
 .embed-source { position: absolute; z-index: 3; right: 8px; bottom: 8px; padding: 6px 8px; background: var(--ink); color: var(--paper-bright); font-family: var(--mono); font-size: 0.62rem; text-decoration: none; }
 
-.media-frame::after {
+.media-frame:not(.media-still)::after {
   position: absolute;
   right: 0;
   bottom: 0;
