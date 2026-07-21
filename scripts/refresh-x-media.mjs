@@ -35,18 +35,45 @@ function isUrlFrom(url, hostname) {
   }
 }
 
-function extractMedia(page) {
+function mediaIdFromUrl(url, kind) {
+  const family = kind === 'video'
+    ? '(?:ext_tw_video|amplify_video|tweet_video)'
+    : '(?:ext_tw_video_thumb|amplify_video_thumb|tweet_video_thumb)';
+  return new URL(url).pathname.match(new RegExp(`(?:^|/)${family}/(\\d+)(?:/|$)`))?.[1];
+}
+
+function focalPosterUrl(page, posters) {
+  const metaTags = page.match(/<meta\b[^>]*>/gi) ?? [];
+  const imageTag = metaTags.find((tag) => /\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["']/i.test(tag));
+  const content = imageTag?.match(/\bcontent=["']([^"']+)["']/i)?.[1];
+  return posters.find(({ url }) => url === content)?.url;
+}
+
+export function extractMedia(page) {
   const decodedPage = decodeEscapes(page);
-  const videoUrls = [...new Set(decodedPage.match(/https:\/\/video\.twimg\.com\/[^"'<>\s]+?\.mp4(?:\?[^"'<>\s]*)?/g) ?? [])]
+  const videos = [...new Set(decodedPage.match(/https:\/\/video\.twimg\.com\/[^"'<>\s]+?\.mp4(?:\?[^"'<>\s]*)?/g) ?? [])]
     .filter((url) => isUrlFrom(url, 'video.twimg.com'))
-    .sort((left, right) => pixelArea(right) - pixelArea(left) || left.localeCompare(right));
-  const posterUrls = [...new Set(decodedPage.match(/https:\/\/pbs\.twimg\.com\/[^"'<>\s]+/g) ?? [])]
+    .map((url) => ({ id: mediaIdFromUrl(url, 'video'), url }))
+    .filter(({ id }) => id);
+  const posters = [...new Set(decodedPage.match(/https:\/\/pbs\.twimg\.com\/[^"'<>\s]+/g) ?? [])]
     .map((url) => url.replace(/[),.;]+$/, ''))
-    .filter((url) => isUrlFrom(url, 'pbs.twimg.com') && /(?:video|tweet)_thumb|amplify_video_thumb/.test(url));
+    .filter((url) => isUrlFrom(url, 'pbs.twimg.com'))
+    .map((url) => ({ id: mediaIdFromUrl(url, 'poster'), url }))
+    .filter(({ id }) => id);
+  const focalPoster = focalPosterUrl(decodedPage, posters);
+  const focalMediaId = focalPoster && mediaIdFromUrl(focalPoster, 'poster');
+
+  if (!focalMediaId) return {};
+
+  const matchingVideos = videos
+    .filter(({ id }) => id === focalMediaId)
+    .sort((left, right) => pixelArea(right.url) - pixelArea(left.url) || left.url.localeCompare(right.url));
+
+  if (!matchingVideos.length) return {};
 
   return {
-    videoUrl: videoUrls[0],
-    posterUrl: posterUrls[0],
+    videoUrl: matchingVideos[0].url,
+    posterUrl: focalPoster,
   };
 }
 
@@ -74,13 +101,11 @@ async function refreshPost(post, previousEntry) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const extracted = extractMedia(await response.text());
-    if (!extracted.videoUrl) throw new Error('no MP4 found');
+    if (!extracted.videoUrl || !extracted.posterUrl) throw new Error('no correlated MP4 and poster found');
 
     return {
       videoUrl: extracted.videoUrl,
-      ...(extracted.posterUrl || previousEntry?.posterUrl
-        ? { posterUrl: extracted.posterUrl ?? previousEntry.posterUrl }
-        : {}),
+      posterUrl: extracted.posterUrl,
       verifiedAt: new Date().toISOString(),
     };
   } catch (error) {
@@ -89,11 +114,15 @@ async function refreshPost(post, previousEntry) {
   }
 }
 
-const previous = await readPrevious();
-const refreshedEntries = await Promise.all(
-  X_POSTS.map(async (post) => [post.id, await refreshPost(post, previous[post.id])]),
-);
-const refreshed = Object.fromEntries(refreshedEntries.filter(([, entry]) => entry));
+async function main() {
+  const previous = await readPrevious();
+  const refreshedEntries = await Promise.all(
+    X_POSTS.map(async (post) => [post.id, await refreshPost(post, previous[post.id])]),
+  );
+  const refreshed = Object.fromEntries(refreshedEntries.filter(([, entry]) => entry));
 
-await writeFile(outputUrl, `${JSON.stringify(refreshed, null, 2)}\n`);
-console.log(`Wrote ${Object.keys(refreshed).length}/${X_POSTS.length} X media records to ${fileURLToPath(outputUrl)}`);
+  await writeFile(outputUrl, `${JSON.stringify(refreshed, null, 2)}\n`);
+  console.log(`Wrote ${Object.keys(refreshed).length}/${X_POSTS.length} X media records to ${fileURLToPath(outputUrl)}`);
+}
+
+if (fileURLToPath(import.meta.url) === process.argv[1]) await main();
