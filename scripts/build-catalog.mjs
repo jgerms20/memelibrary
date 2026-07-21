@@ -5,7 +5,11 @@ import { pathToFileURL } from 'node:url';
 const OUTPUT = resolve('src/data/catalog.generated.json');
 const MINIMUM = 1_000;
 const MAXIMUM = 5_000;
-const INDEXED_AT = new Date().toISOString().slice(0, 10);
+export function utcDateStamp(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+const INDEXED_AT = utcDateStamp();
 const SUBREDDITS = [
   ['reactiongifs', 170, 'Reaction GIFs'],
   ['BlackPeopleTwitter', 120, 'Black Twitter'],
@@ -82,7 +86,6 @@ function normalizeStoredRecord(record) {
     mediaUrl,
     downloadUrl: mediaUrl,
     mediaType: mediaTypeFor(mediaUrl),
-    indexedAt: INDEXED_AT,
   };
 }
 
