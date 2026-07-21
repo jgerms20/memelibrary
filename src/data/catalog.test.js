@@ -18,6 +18,7 @@ describe('expanded catalog', () => {
     expect(generatedCatalog.every((item) => (
       typeof item.indexedAt === 'string' && !Number.isNaN(Date.parse(item.indexedAt))
     ))).toBe(true);
+    expect(generatedCatalog.every((item) => !Number.isNaN(Date.parse(item.lastVerifiedAt)))).toBe(true);
     expect(mediaTypes).toEqual(new Set(['image', 'gif', 'video']));
   });
 
@@ -52,6 +53,28 @@ describe('catalog builder', () => {
   it('formats dynamic indexed dates as UTC calendar dates', () => {
     expect(catalogBuilder.utcDateStamp).toBeTypeOf('function');
     expect(catalogBuilder.utcDateStamp(new Date('2027-01-02T23:59:59-08:00'))).toBe('2027-01-03');
+  });
+
+  it('derives verification metadata and current lifecycle labels from the refresh date', () => {
+    const refreshed = catalogBuilder.withRefreshMetadata({
+      id: 'example',
+      timelineLabels: { start: 'Posted', peak: 'Popular', now: '2026' },
+      trail: [{ label: 'Indexed', date: '2026', detail: 'Added', tone: 'blue' }],
+    }, new Date('2027-03-04T05:06:07.000Z'));
+
+    expect(refreshed.lastVerifiedAt).toBe('2027-03-04T05:06:07.000Z');
+    expect(refreshed.timelineLabels.now).toBe('2027');
+    expect(refreshed.trail[0].date).toBe('2027');
+  });
+
+  it('rejects invalid candidates before catalog output is written', () => {
+    const invalid = [
+      { id: 'duplicate', mediaUrl: 'not-a-url', sourceUrl: 'https://example.com/1', indexedAt: '2026-01-01' },
+      { id: 'duplicate', mediaUrl: 'https://example.com/2.jpg', sourceUrl: 'https://example.com/2', indexedAt: '2026-01-01' },
+    ];
+
+    expect(() => catalogBuilder.validateCatalog(invalid, { minimum: 1, maximum: 5, previousLength: 0 }))
+      .toThrow(/duplicate id|invalid media url/i);
   });
 
   it('retains existing records before incoming duplicates', () => {

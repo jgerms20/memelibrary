@@ -30,7 +30,17 @@ function AboutView({ onSearch }) {
         <article><span>02</span><h2>Trace the source</h2><p>Every record keeps its platform, creator, first upload, capture context, and spread history linked wherever the public source allows.</p></article>
         <article><span>03</span><h2>Use it again</h2><p>Save favorites on this device and open the original image, video, GIF, post, or reference page when you need it.</p></article>
       </div>
-      <button className="about-cta" type="button" onClick={onSearch}>Find a meme</button>
+      <div className="about-actions">
+        <button className="about-cta" type="button" onClick={onSearch}>Find a meme</button>
+        <a
+          className="about-removal"
+          href="https://github.com/jgerms20/memelibrary/issues/new?template=media-removal.yml"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Report media or request removal
+        </a>
+      </div>
     </main>
   );
 }

@@ -28,5 +28,9 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { name: 'Your saved memes' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'About' }));
     expect(screen.getByRole('heading', { name: 'Built for fuzzy internet memory.' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Report media or request removal' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('github.com/jgerms20/memelibrary/issues/new'),
+    );
   });
 });

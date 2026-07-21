@@ -34,4 +34,8 @@ To refresh locally, run `npm run catalog:refresh` and `npm run x-media:refresh`.
 
 ## Content note
 
-Most media stays on its public source host. The 14 curated X reaction clips are mirrored into the static site for dependable playback while retaining their original post and creator links. Archive accounts may be curators rather than original creators. A larger production release should add a rights-review queue, takedown handling, and a server-side multimodal ingestion pipeline.
+Most media stays on its public source host. The 14 curated X reaction clips are mirrored into the static site for dependable playback while retaining their original post and creator links. Archive accounts may be curators rather than original creators. A larger production release should add a formal rights-review queue and a server-side multimodal ingestion pipeline.
+
+## Media removal
+
+Rights holders and featured people can use the site's **Report media or request removal** link or [open a media-removal request](https://github.com/jgerms20/memelibrary/issues/new?template=media-removal.yml). Include the Meme Library URL, original source, your relationship to the work, and the requested action. A maintainer can remove the mirrored asset and its catalog record in the next deploy; urgent claims should be handled before the next scheduled refresh.

@@ -1,5 +1,5 @@
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { mkdir, open, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { X_POSTS } from '../src/data/xPosts.js';
 
 const outputUrl = new URL('../src/data/xMedia.generated.json', import.meta.url);
@@ -115,53 +115,90 @@ async function refreshPost(post, previousEntry) {
   }
 }
 
-async function isHealthyLocalFile(fileUrl) {
+export function validateMediaResponse(contentType, bytes, kind) {
+  const normalizedType = contentType?.split(';')[0].trim().toLowerCase();
+  if (kind === 'video') {
+    return normalizedType === 'video/mp4'
+      && bytes.length >= 8
+      && String.fromCharCode(...bytes.slice(4, 8)) === 'ftyp';
+  }
+  return normalizedType === 'image/jpeg'
+    && bytes.length >= 3
+    && bytes[0] === 0xff
+    && bytes[1] === 0xd8
+    && bytes[2] === 0xff;
+}
+
+async function isHealthyLocalFile(fileUrl, kind) {
   try {
-    return (await stat(fileUrl)).size > 1_000;
+    if ((await stat(fileUrl)).size <= 1_000) return false;
+    const handle = await open(fileUrl, 'r');
+    try {
+      const header = new Uint8Array(12);
+      await handle.read(header, 0, header.length, 0);
+      const expectedType = kind === 'video' ? 'video/mp4' : 'image/jpeg';
+      return validateMediaResponse(expectedType, header, kind);
+    } finally {
+      await handle.close();
+    }
   } catch (error) {
     if (error.code === 'ENOENT') return false;
     throw error;
   }
 }
 
-async function downloadMedia(sourceUrl, targetUrl, canReuseExisting) {
-  if (canReuseExisting && await isHealthyLocalFile(targetUrl)) return;
-
-  try {
-    const response = await fetch(sourceUrl, {
-      headers: { 'user-agent': 'Mozilla/5.0 Meme Library media mirror' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength <= 1_000) throw new Error('response was unexpectedly small');
-    const temporaryUrl = new URL(`${fileURLToPath(targetUrl)}.tmp`, 'file:');
-    await writeFile(temporaryUrl, bytes);
-    await rename(temporaryUrl, targetUrl);
-  } catch (error) {
-    if (await isHealthyLocalFile(targetUrl)) {
-      console.warn(`Could not update ${fileURLToPath(targetUrl)}: ${error.message}; keeping the existing asset`);
-      return;
-    }
-    throw error;
+async function fetchMediaBytes(sourceUrl, kind) {
+  const response = await fetch(sourceUrl, {
+    headers: { 'user-agent': 'Mozilla/5.0 Meme Library media mirror' },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength <= 1_000) throw new Error('response was unexpectedly small');
+  if (!validateMediaResponse(response.headers.get('content-type'), bytes, kind)) {
+    throw new Error(`response was not a valid ${kind === 'video' ? 'MP4' : 'JPEG'}`);
   }
+  return bytes;
 }
 
 async function syncLocalMedia(postId, entry, previousEntry) {
-  if (!entry?.videoUrl || !entry?.posterUrl) return;
-  await Promise.all([
-    downloadMedia(
-      entry.videoUrl,
-      new URL(`${postId}.mp4`, mediaDirectoryUrl),
-      previousEntry?.videoUrl === entry.videoUrl,
-    ),
-    downloadMedia(
-      entry.posterUrl,
-      new URL(`${postId}.jpg`, mediaDirectoryUrl),
-      previousEntry?.posterUrl === entry.posterUrl,
-    ),
-  ]);
+  if (!entry?.videoUrl || !entry?.posterUrl) return true;
+  const videoUrl = new URL(`${postId}.mp4`, mediaDirectoryUrl);
+  const posterUrl = new URL(`${postId}.jpg`, mediaDirectoryUrl);
+  const canReuseExisting = previousEntry?.videoUrl === entry.videoUrl
+    && previousEntry?.posterUrl === entry.posterUrl
+    && await isHealthyLocalFile(videoUrl, 'video')
+    && await isHealthyLocalFile(posterUrl, 'poster');
+  if (canReuseExisting) return true;
+
+  const videoTemporaryUrl = pathToFileURL(`${fileURLToPath(videoUrl)}.${process.pid}.tmp`);
+  const posterTemporaryUrl = pathToFileURL(`${fileURLToPath(posterUrl)}.${process.pid}.tmp`);
+  try {
+    const [videoBytes, posterBytes] = await Promise.all([
+      fetchMediaBytes(entry.videoUrl, 'video'),
+      fetchMediaBytes(entry.posterUrl, 'poster'),
+    ]);
+    await Promise.all([
+      writeFile(videoTemporaryUrl, videoBytes),
+      writeFile(posterTemporaryUrl, posterBytes),
+    ]);
+    await rename(videoTemporaryUrl, videoUrl);
+    await rename(posterTemporaryUrl, posterUrl);
+    return true;
+  } catch (error) {
+    await Promise.all([
+      unlink(videoTemporaryUrl).catch(() => {}),
+      unlink(posterTemporaryUrl).catch(() => {}),
+    ]);
+    const existingPairIsHealthy = await isHealthyLocalFile(videoUrl, 'video')
+      && await isHealthyLocalFile(posterUrl, 'poster');
+    if (existingPairIsHealthy && previousEntry) {
+      console.warn(`Could not update local media for ${postId}: ${error.message}; keeping the prior pair`);
+      return false;
+    }
+    throw error;
+  }
 }
 
 async function main() {
@@ -172,9 +209,15 @@ async function main() {
   const refreshed = Object.fromEntries(refreshedEntries.filter(([, entry]) => entry));
 
   await mkdir(mediaDirectoryUrl, { recursive: true });
-  await Promise.all(
-    Object.entries(refreshed).map(([postId, entry]) => syncLocalMedia(postId, entry, previous[postId])),
+  const syncResults = await Promise.all(
+    Object.entries(refreshed).map(async ([postId, entry]) => [
+      postId,
+      await syncLocalMedia(postId, entry, previous[postId]),
+    ]),
   );
+  for (const [postId, wasUpdated] of syncResults) {
+    if (!wasUpdated && previous[postId]) refreshed[postId] = previous[postId];
+  }
 
   await writeFile(outputUrl, `${JSON.stringify(refreshed, null, 2)}\n`);
   console.log(`Wrote ${Object.keys(refreshed).length}/${X_POSTS.length} X media records to ${fileURLToPath(outputUrl)}`);

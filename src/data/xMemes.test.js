@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { extractMedia } from '../../scripts/refresh-x-media.mjs';
+import { extractMedia, validateMediaResponse } from '../../scripts/refresh-x-media.mjs';
 import xMedia from './xMedia.generated.json';
 import { xMemes } from './xMemes.js';
 import { X_POSTS } from './xPosts.js';
@@ -56,5 +56,16 @@ describe('curated X media', () => {
     `;
 
     expect(extractMedia(page)).toEqual({});
+  });
+
+  it('rejects HTML challenge bodies before they can replace media assets', () => {
+    const html = new TextEncoder().encode('<!doctype html><title>challenge</title>');
+    const mp4 = Uint8Array.from([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
+    const jpeg = Uint8Array.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70]);
+
+    expect(validateMediaResponse('text/html', html, 'video')).toBe(false);
+    expect(validateMediaResponse('video/mp4', mp4, 'video')).toBe(true);
+    expect(validateMediaResponse('image/jpeg', jpeg, 'poster')).toBe(true);
+    expect(validateMediaResponse('image/jpeg', html, 'poster')).toBe(false);
   });
 });

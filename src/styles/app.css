@@ -851,6 +851,8 @@ footer p { margin: 0; }
 .about-view { max-width: var(--max); min-height: 74vh; margin: 0 auto; padding: 70px clamp(20px, 6vw, 90px); border-right: 1px solid var(--rule); border-left: 1px solid var(--rule); }
 .about-view .archive-label { display: block; color: var(--violet); }
 .about-view > h1 { max-width: 980px; margin: 12px 0 48px; font-family: var(--display); font-size: clamp(3.6rem, 7vw, 7.8rem); font-weight: 900; letter-spacing: -0.07em; line-height: 0.88; text-transform: uppercase; }
+.about-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.about-removal { color: var(--muted); font-family: var(--mono); font-size: 0.7rem; text-underline-offset: 3px; }
 .about-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule); }
 .about-grid article { min-height: 230px; padding: 24px; }
 .about-grid article + article { border-left: 1px solid var(--rule); }

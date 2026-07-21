@@ -9,6 +9,46 @@ export function utcDateStamp(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+export function withRefreshMetadata(record, date = new Date()) {
+  const currentYear = String(date.getUTCFullYear());
+  return {
+    ...record,
+    lastVerifiedAt: date.toISOString(),
+    ...(record.timelineLabels
+      ? { timelineLabels: { ...record.timelineLabels, now: currentYear } }
+      : {}),
+    ...(Array.isArray(record.trail)
+      ? {
+        trail: record.trail.map((step) => (
+          step.label === 'Indexed' ? { ...step, date: currentYear } : step
+        )),
+      }
+      : {}),
+  };
+}
+
+export function validateCatalog(catalog, { minimum = MINIMUM, maximum = MAXIMUM, previousLength = 0 } = {}) {
+  if (catalog.length < previousLength) throw new Error(`Catalog would shrink below ${previousLength} records.`);
+  if (catalog.length < minimum) throw new Error(`Catalog has ${catalog.length}; expected at least ${minimum} records.`);
+  if (catalog.length > maximum) throw new Error(`Catalog has ${catalog.length}; maximum is ${maximum} records.`);
+
+  const ids = new Set();
+  const mediaUrls = new Set();
+  for (const record of catalog) {
+    if (!record.id || ids.has(record.id)) throw new Error(`Duplicate id: ${record.id || '(missing)'}`);
+    ids.add(record.id);
+    if (!record.mediaUrl || !/^https?:\/\//.test(record.mediaUrl)) throw new Error(`Invalid media URL for ${record.id}`);
+    if (mediaUrls.has(record.mediaUrl)) throw new Error(`Duplicate media URL for ${record.id}`);
+    mediaUrls.add(record.mediaUrl);
+    if (!record.sourceUrl || !/^https?:\/\//.test(record.sourceUrl)) throw new Error(`Invalid source URL for ${record.id}`);
+    if (!record.indexedAt || Number.isNaN(Date.parse(record.indexedAt))) throw new Error(`Invalid indexedAt for ${record.id}`);
+    if (!record.lastVerifiedAt || Number.isNaN(Date.parse(record.lastVerifiedAt))) throw new Error(`Invalid lastVerifiedAt for ${record.id}`);
+    if (!['image', 'gif', 'video'].includes(record.mediaType)) throw new Error(`Invalid media type for ${record.id}`);
+    if (record.nsfw === true || record.spoiler === true) throw new Error(`Unsafe record: ${record.id}`);
+  }
+  return catalog;
+}
+
 const INDEXED_AT = utcDateStamp();
 const SUBREDDITS = [
   ['reactiongifs', 170, 'Reaction GIFs'],
@@ -256,6 +296,7 @@ export function mergeCatalog(existing, incoming, maximum = MAXIMUM) {
 }
 
 export async function refreshCatalog() {
+  const refreshStartedAt = new Date();
   const existingCatalog = (await loadExistingCatalog()).map(normalizeStoredRecord);
   const sources = [
     {
@@ -281,13 +322,9 @@ export async function refreshCatalog() {
     }
   }
 
-  const catalog = mergeCatalog(existingCatalog, incoming, MAXIMUM);
-  if (catalog.length < existingCatalog.length) {
-    throw new Error(`Catalog refresh would shrink from ${existingCatalog.length} to ${catalog.length} records.`);
-  }
-  if (catalog.length < MINIMUM) {
-    throw new Error(`Catalog refresh produced ${catalog.length}; expected at least ${MINIMUM} records.`);
-  }
+  const catalog = mergeCatalog(existingCatalog, incoming, MAXIMUM)
+    .map((record) => withRefreshMetadata(record, refreshStartedAt));
+  validateCatalog(catalog, { previousLength: existingCatalog.length });
 
   await writeFile(OUTPUT, `${JSON.stringify(catalog, null, 2)}\n`);
   console.log(`Wrote ${catalog.length} source-linked records (${catalog.length - existingCatalog.length} added) to ${OUTPUT}.`);

@@ -1,0 +1,49 @@
+name: Media removal request
+description: Report rights, privacy, safety, or attribution concerns about an item in Meme Library.
+title: "[Media removal]: "
+labels:
+  - media-removal
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for flagging this. Please provide enough detail for a maintainer to identify and review the item quickly.
+  - type: input
+    id: library_url
+    attributes:
+      label: Meme Library page or item
+      placeholder: Paste the Meme Library URL and item title.
+    validations:
+      required: true
+  - type: input
+    id: source_url
+    attributes:
+      label: Original source
+      placeholder: Paste the original post or creator URL.
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Reason
+      options:
+        - Copyright or licensing
+        - Privacy or consent
+        - Safety
+        - Incorrect attribution
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: relationship
+    attributes:
+      label: Your relationship to the media
+      description: Explain whether you are the creator, rights holder, featured person, or authorized representative.
+    validations:
+      required: true
+  - type: textarea
+    id: action
+    attributes:
+      label: Requested action
+      placeholder: Remove the mirrored media, correct attribution, or describe another resolution.
+    validations:
+      required: true
