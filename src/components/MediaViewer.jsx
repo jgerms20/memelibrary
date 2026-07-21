@@ -56,10 +56,9 @@ export default function MediaViewer({ item }) {
           loop
           playsInline
           preload="metadata"
+          referrerPolicy="no-referrer"
           onError={() => setDirectVideoFailed(true)}
-        >
-          <track kind="captions" />
-        </video>
+        />
       </MediaShell>
     );
   }
@@ -80,9 +79,7 @@ export default function MediaViewer({ item }) {
   if (isDirectVideoMedia(item)) {
     return (
       <MediaShell frameClass="media-video" label={mediaLabel(item)}>
-        <video src={item.mediaUrl} controls muted loop playsInline preload="metadata" onError={() => setFailed(true)}>
-          <track kind="captions" />
-        </video>
+        <video src={item.mediaUrl} controls muted loop playsInline preload="metadata" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       </MediaShell>
     );
   }

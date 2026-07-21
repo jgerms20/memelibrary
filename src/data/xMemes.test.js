@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { extractMedia } from '../../scripts/refresh-x-media.mjs';
 import xMedia from './xMedia.generated.json';
 import { xMemes } from './xMemes.js';
@@ -17,10 +19,18 @@ describe('curated X media', () => {
 
       const meme = xMemes.find((item) => item.id === `x-${postId}`);
       expect(meme).toMatchObject({
-        directVideoUrl: media.videoUrl,
-        posterUrl: media.posterUrl,
+        directVideoUrl: `/media/x/${postId}.mp4`,
+        posterUrl: `/media/x/${postId}.jpg`,
+        sourceVideoUrl: media.videoUrl,
+        sourcePosterUrl: media.posterUrl,
         verifiedAt: media.verifiedAt,
       });
+      const videoPath = resolve(process.cwd(), `public/media/x/${postId}.mp4`);
+      const posterPath = resolve(process.cwd(), `public/media/x/${postId}.jpg`);
+      expect(existsSync(videoPath)).toBe(true);
+      expect(existsSync(posterPath)).toBe(true);
+      expect(statSync(videoPath).size).toBeGreaterThan(1_000);
+      expect(statSync(posterPath).size).toBeGreaterThan(1_000);
       expect(meme.embedUrl).toMatch(/^https:\/\/platform\.twitter\.com\/embed\/Tweet\.html\?/);
     }
   });

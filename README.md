@@ -5,7 +5,7 @@ Meme Library finds the exact meme, reaction image, GIF, video, or cultural clip 
 ## What works
 
 - Natural-language recall search across more than 1,000 source-linked records
-- Real images, GIFs, privacy-enhanced YouTube playback, direct video, and bounded public X fallbacks
+- Real images, GIFs, privacy-enhanced YouTube playback, locally served curated reaction video, and bounded public X fallbacks
 - Platform, media, and community filters with dedicated Trending and Saved views
 - Linked platform, creator, first-upload, capture, and current-status provenance
 - Persistent light and dark themes
@@ -34,4 +34,4 @@ To refresh locally, run `npm run catalog:refresh` and `npm run x-media:refresh`.
 
 ## Content note
 
-Media stays on its public source host; Meme Library stores search metadata and source links. Archive accounts may be curators rather than original creators. A larger production release should add a rights-review queue, takedown handling, and a server-side multimodal ingestion pipeline.
+Most media stays on its public source host. The 14 curated X reaction clips are mirrored into the static site for dependable playback while retaining their original post and creator links. Archive accounts may be curators rather than original creators. A larger production release should add a rights-review queue, takedown handling, and a server-side multimodal ingestion pipeline.

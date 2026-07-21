@@ -34,7 +34,7 @@ describe('SearchExperience', () => {
     expect(screen.getByRole('heading', { name: 'Today Drained Me' })).toBeInTheDocument();
     expect(document.querySelector('video')).toHaveAttribute(
       'src',
-      expect.stringContaining('video.twimg.com'),
+      '/media/x/1554890639409545216.mp4',
     );
     expect(document.querySelector('video')).toHaveAttribute('controls');
     expect(screen.queryByTitle('Today Drained Me post')).not.toBeInTheDocument();

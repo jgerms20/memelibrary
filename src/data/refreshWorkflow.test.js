@@ -14,6 +14,7 @@ describe('library refresh workflow', () => {
     expect(workflow).toContain('ref: main');
     expect(workflow).toContain('npm run catalog:refresh');
     expect(workflow).toContain('npm run x-media:refresh');
+    expect(workflow).toContain('public/media/x');
 
     const testPosition = workflow.indexOf('npm test -- --run');
     const buildPosition = workflow.indexOf('npm run build');
@@ -22,6 +23,8 @@ describe('library refresh workflow', () => {
     expect(buildPosition).toBeGreaterThan(testPosition);
     expect(commitPosition).toBeGreaterThan(buildPosition);
 
+    expect(workflow).toContain('vercel@56.4.1 pull --yes --environment=production');
+    expect(workflow).toContain('vercel@56.4.1 build --prod');
     expect(workflow).toContain('vercel@56.4.1 deploy --prebuilt --prod');
     expect(workflow).toContain('VERCEL_TOKEN');
     expect(workflow).toContain('VERCEL_ORG_ID');

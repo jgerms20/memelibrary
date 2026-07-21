@@ -31,6 +31,8 @@ describe('MediaViewer', () => {
     expect(video).toHaveAttribute('controls');
     expect(video).toHaveAttribute('playsinline');
     expect(video).toHaveAttribute('preload', 'metadata');
+    expect(video).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(video.querySelector('track:not([src])')).not.toBeInTheDocument();
     expect(container.querySelector('iframe')).not.toBeInTheDocument();
   });
 
