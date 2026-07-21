@@ -26,20 +26,23 @@ describe('SearchExperience', () => {
     expect(screen.getByRole('heading', { name: 'Ultimate Dog Tease' })).toBeInTheDocument();
   });
 
-  it('finds and embeds a requested X reaction video', () => {
+  it('finds and plays a requested X reaction video', () => {
     renderExperience();
     const search = screen.getByRole('searchbox');
     fireEvent.change(search, { target: { value: 'today drained me' } });
     fireEvent.submit(search.closest('form'));
     expect(screen.getByRole('heading', { name: 'Today Drained Me' })).toBeInTheDocument();
-    expect(screen.getByTitle('Today Drained Me post')).toHaveAttribute(
+    expect(document.querySelector('video')).toHaveAttribute(
       'src',
-      expect.stringContaining('platform.twitter.com/embed/Tweet.html?id=1554890639409545216'),
+      expect.stringContaining('video.twimg.com'),
     );
-    expect(screen.getByRole('link', { name: 'Embed not loading? Open X' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('x.com/allreactionvids/status/1554890639409545216'),
-    );
+    expect(document.querySelector('video')).toHaveAttribute('controls');
+    expect(screen.queryByTitle('Today Drained Me post')).not.toBeInTheDocument();
+  });
+
+  it('shows the live searchable library size', () => {
+    renderExperience();
+    expect(screen.getByText(`SEARCH ${memes.length.toLocaleString()} CULTURAL REFERENCES`)).toBeInTheDocument();
   });
 
   it('starts with a clean recall prompt instead of a prefilled example', () => {

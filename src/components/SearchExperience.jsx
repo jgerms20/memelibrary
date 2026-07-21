@@ -53,7 +53,11 @@ export default function SearchExperience({
   }
 
   const viewTitle = view === 'saved' ? 'Your saved memes' : view === 'trending' ? 'Trending now' : 'Find your meme.';
-  const eyebrow = view === 'saved' ? 'YOUR PERSONAL SHELF' : view === 'trending' ? 'FRESH FROM THE FEED' : 'SEARCH 600+ CULTURAL REFERENCES';
+  const eyebrow = view === 'saved'
+    ? 'YOUR PERSONAL SHELF'
+    : view === 'trending'
+      ? 'FRESH FROM THE FEED'
+      : `SEARCH ${items.length.toLocaleString()} CULTURAL REFERENCES`;
 
   return (
     <main id="search">
