@@ -23,6 +23,7 @@ jobs:
       - name: Check out the production branch
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Use Node.js 20
@@ -59,10 +60,10 @@ jobs:
           fi
 
       - name: Pull Vercel production settings
-        run: npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@56.4.1 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build with Vercel
-        run: npx --yes vercel build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@56.4.1 build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy production
-        run: npx --yes vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@56.4.1 deploy --prebuilt --prod --token="$VERCEL_TOKEN"

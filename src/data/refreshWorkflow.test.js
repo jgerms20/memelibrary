@@ -11,6 +11,7 @@ describe('library refresh workflow', () => {
     expect(workflow).toContain('schedule:');
     expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('contents: write');
+    expect(workflow).toContain('ref: main');
     expect(workflow).toContain('npm run catalog:refresh');
     expect(workflow).toContain('npm run x-media:refresh');
 
@@ -21,7 +22,7 @@ describe('library refresh workflow', () => {
     expect(buildPosition).toBeGreaterThan(testPosition);
     expect(commitPosition).toBeGreaterThan(buildPosition);
 
-    expect(workflow).toContain('vercel deploy --prebuilt --prod');
+    expect(workflow).toContain('vercel@56.4.1 deploy --prebuilt --prod');
     expect(workflow).toContain('VERCEL_TOKEN');
     expect(workflow).toContain('VERCEL_ORG_ID');
     expect(workflow).toContain('VERCEL_PROJECT_ID');
