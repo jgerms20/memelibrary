@@ -1035,7 +1035,9 @@ footer p { margin: 0; }
 
 @media (max-width: 860px) {
   .site-header {
-    position: static;
+    position: sticky;
+    z-index: 30;
+    top: 0;
     grid-template-columns: 1fr auto;
     min-height: 72px;
     padding: 0 18px;
@@ -1060,6 +1062,7 @@ footer p { margin: 0; }
   .brand { font-size: 1.45rem; }
   .brand svg { display: none; }
   .theme-toggle span { display: none; }
+  .theme-toggle { position: relative; z-index: 31; }
 
   .search-hero {
     padding: 30px 18px 20px;
