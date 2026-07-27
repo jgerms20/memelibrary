@@ -66,8 +66,8 @@ export default function MemeDetails({ result, compact = false, isSaved = false, 
   return (
     <article className="selected-result">
       <div className="match-line">
-        <span>{hasMatchScore ? 'Best match' : 'Featured'}</span>
-        <strong>{hasMatchScore ? `${confidence}% match` : 'Catalog pick'}</strong>
+        <span>{hasMatchScore ? 'Best match' : item.computedTrendScore != null ? 'Trending' : 'Featured'}</span>
+        <strong>{hasMatchScore ? `${confidence}% match` : item.computedTrendScore != null ? `${item.computedTrendScore}/100 trend score` : 'Catalog pick'}</strong>
       </div>
       <MediaViewer key={item.id} item={item} />
       <div className="selected-copy">

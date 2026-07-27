@@ -1,5 +1,7 @@
 import generatedCatalog from './catalog.generated.json';
+import { currentMemes } from './currentMemes.js';
 import { xMemes } from './xMemes.js';
+import { isSafeCatalogRecord } from '../lib/catalogSafety.js';
 
 const ytThumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 const ytSource = (id) => `https://www.youtube.com/watch?v=${id}`;
@@ -409,7 +411,12 @@ function enrichCanonical(item) {
   };
 }
 
-export const memes = [...canonicalMemes.map(enrichCanonical), ...xMemes, ...generatedCatalog];
+export const memes = [
+  ...currentMemes,
+  ...canonicalMemes.map(enrichCanonical),
+  ...xMemes,
+  ...generatedCatalog.filter(isSafeCatalogRecord),
+];
 
 export const suggestions = [
   'white Vans kid',

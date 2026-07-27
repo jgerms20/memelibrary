@@ -8,8 +8,11 @@ function renderExperience(props = {}) {
 }
 
 describe('SearchExperience', () => {
-  it('shows real media and a playable best match on first render', () => {
+  it('shows real media and a playable best match', () => {
     renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'keyboard cat' } });
+    fireEvent.submit(search.closest('form'));
     expect(screen.getByRole('heading', { name: 'Keyboard Cat' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /keyboard cat video thumbnail/i })).toHaveAttribute(
       'src',
@@ -57,29 +60,36 @@ describe('SearchExperience', () => {
 
   it('filters the catalog to image results', () => {
     renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'cat' } });
+    fireEvent.submit(search.closest('form'));
     fireEvent.click(screen.getByRole('button', { name: 'Image' }));
     expect(screen.getByRole('heading', { name: 'Woman Yelling at a Cat' })).toBeInTheDocument();
     expect(screen.queryByText('Keyboard Cat', { selector: 'h2' })).not.toBeInTheDocument();
   });
 
-  it('filters the catalog by platform and community', () => {
+  it('filters the catalog with accessible platform and community chips', () => {
     renderExperience();
-    fireEvent.change(screen.getByLabelText('Platform'), { target: { value: 'Reddit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reddit' }));
     expect(screen.getAllByText(/Reddit/i, { selector: '.platform-badge' }).length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText('Community'), { target: { value: 'Black Twitter' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Black Twitter' }));
+    expect(screen.getByRole('button', { name: 'Black Twitter' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getAllByText(/Black Twitter/i).length).toBeGreaterThan(0);
   });
 
-  it('updates the selected detail when a result row is chosen', () => {
+  it('links every result to a shareable detail route', () => {
     renderExperience();
-    const result = screen.getByRole('button', { name: 'Open Woman Yelling at a Cat' });
-    fireEvent.click(result);
-    expect(screen.getByRole('heading', { name: 'Woman Yelling at a Cat' })).toBeInTheDocument();
-    expect(screen.getByText(/angry woman pointing at a white cat/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Woman Yelling at a Cat' })).toHaveAttribute(
+      'href',
+      '#meme/woman-yelling-cat',
+    );
   });
 
   it('activates the privacy-enhanced player only after play', () => {
     renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'keyboard cat' } });
+    fireEvent.submit(search.closest('form'));
     fireEvent.click(screen.getByRole('button', { name: 'Play Keyboard Cat' }));
     const player = screen.getByTitle('Keyboard Cat video player');
     expect(player).toHaveAttribute('src', expect.stringContaining('youtube-nocookie.com/embed/J---aiyznGQ'));
@@ -87,6 +97,9 @@ describe('SearchExperience', () => {
 
   it('keeps a useful source action when remote media fails', () => {
     renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'keyboard cat' } });
+    fireEvent.submit(search.closest('form'));
     const media = screen.getByRole('img', { name: /keyboard cat video thumbnail/i });
     fireEvent.error(media);
     const fallback = screen.getByTestId('media-fallback');
@@ -135,6 +148,9 @@ describe('SearchExperience', () => {
   it('saves the selected meme through the provided saved-state action', () => {
     const onToggleSaved = vi.fn();
     renderExperience({ onToggleSaved, isSaved: () => false });
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'keyboard cat' } });
+    fireEvent.submit(search.closest('form'));
     fireEvent.click(screen.getByRole('button', { name: 'Save Keyboard Cat' }));
     expect(onToggleSaved).toHaveBeenCalledWith('keyboard-cat');
   });
@@ -148,9 +164,36 @@ describe('SearchExperience', () => {
 
   it('uses normalized community facets, including animals', () => {
     renderExperience();
-    expect(screen.getByRole('option', { name: 'TV & film' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Animals' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'TV / film' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'TV & film' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Animals' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'TV / film' })).not.toBeInTheDocument();
+  });
+
+  it('shows 24 results initially and loads the rest on demand', () => {
+    render(<SearchExperience items={memes.slice(0, 30)} />);
+    const resultList = screen.getByLabelText('Search results');
+    expect(within(resultList).getAllByRole('link')).toHaveLength(24);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show 6 more' }));
+    expect(within(resultList).getAllByRole('link')).toHaveLength(30);
+  });
+
+  it('explains the signals behind the trending view', () => {
+    renderExperience({ view: 'trending' });
+    expect(screen.getByRole('note', { name: 'How trending is ranked' })).toHaveTextContent(
+      /45% recency.*35% source engagement.*20% editorial verification/i,
+    );
+    expect(screen.getByText(/\d+\/100 trend score/i)).toBeInTheDocument();
+  });
+
+  it('preserves a missed query in the catalog request link', () => {
+    renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'spaceship banana orchestra' } });
+    fireEvent.submit(search.closest('form'));
+
+    const request = screen.getByRole('link', { name: 'Request this meme' });
+    expect(new URL(request.href).searchParams.get('body')).toContain('spaceship banana orchestra');
   });
 
   it('includes collapsible full provenance for mobile layouts', () => {
@@ -160,6 +203,9 @@ describe('SearchExperience', () => {
 
   it('links origin, creator, and first upload while showing dated lifecycle labels', () => {
     renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'keyboard cat' } });
+    fireEvent.submit(search.closest('form'));
     expect(screen.getAllByRole('link', { name: 'YouTube' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));
     expect(screen.getAllByRole('link', { name: 'Charlie Schmidt' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));
     expect(screen.getAllByRole('link', { name: 'June 7, 2007' })[0]).toHaveAttribute('href', expect.stringContaining('youtube.com'));

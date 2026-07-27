@@ -33,8 +33,9 @@ describe('expanded catalog', () => {
     expect(memes.length).toBeGreaterThanOrEqual(500);
     expect(new Set(memes.map((item) => item.id)).size).toBe(memes.length);
     expect(memes.every((item) => item.nsfw !== true && item.spoiler !== true)).toBe(true);
-    expect(memes.every((item) => item.mediaUrl?.startsWith('http'))).toBe(true);
+    expect(memes.every((item) => /^(?:https?:\/\/|\/media\/)/.test(item.mediaUrl ?? ''))).toBe(true);
     expect(memes.every((item) => item.sourceUrl?.startsWith('http'))).toBe(true);
+    expect(memes.every((item) => catalogBuilder.isSafeCatalogRecord(item))).toBe(true);
   });
 
   it('normalizes discovery fields used by search and provenance', () => {
@@ -47,9 +48,63 @@ describe('expanded catalog', () => {
     expect(memes.some((item) => item.title === 'Today Drained Me')).toBe(true);
     expect(memes.some((item) => item.title === 'Mariah Carey: Oh Really? That Sucks')).toBe(true);
   });
+
+  it('includes the requested culture-memory records with working source metadata', () => {
+    const requested = [
+      'Stepped on My Damn Toe',
+      'Somebody Get These Beggars Out of Here',
+      'LeBron James Kid',
+      'Kanye Tweet Screenshot',
+    ];
+
+    for (const title of requested) {
+      const item = memes.find((candidate) => candidate.title === title);
+      expect(item, `${title} should be in the library`).toBeDefined();
+      expect(item.mediaUrl).toMatch(/^https?:\/\/|^\/media\//);
+      expect(item.sourceUrl).toMatch(/^https?:\/\//);
+      expect(item.firstUploadUrl).toMatch(/^https?:\/\//);
+      expect(item.creatorUrl).toMatch(/^https?:\/\//);
+    }
+  });
 });
 
 describe('catalog builder', () => {
+  it('excludes traumatic real-world news while preserving fictional meme templates', () => {
+    expect(catalogBuilder.isSafeCatalogRecord).toBeTypeOf('function');
+    expect(catalogBuilder.isSafeCatalogRecord({
+      title: 'ICE is out of control',
+      summary: 'A man was killed during an immigration raid.',
+      community: 'Black Twitter',
+      tags: ['breaking news'],
+      contexts: [],
+    })).toBe(false);
+    expect(catalogBuilder.isSafeCatalogRecord({
+      title: 'Who Killed Hannibal?',
+      summary: 'The fictional Eric Andre reaction image template.',
+      community: 'Classic internet',
+      tags: ['meme template', 'fictional'],
+      contexts: [],
+    })).toBe(true);
+
+    const traumaticFixtures = [
+      'reddit-1v0dr77',
+      'reddit-1v20krj',
+      'reddit-1v88tsj',
+    ];
+    expect(generatedCatalog.filter((item) => traumaticFixtures.includes(item.id))).toEqual([]);
+
+    for (const title of [
+      'Mayor killed in attack',
+      'School shooting leaves several wounded',
+      'Five victims murdered at concert',
+      'Child dies after police pursuit',
+      'Some deaths are more honorable than others',
+      'The doctors killed him. I simply shot at him.',
+    ]) {
+      expect(catalogBuilder.isSafeCatalogRecord({ title, tags: ['news'], contexts: [] }), title).toBe(false);
+    }
+  });
+
   it('formats dynamic indexed dates as UTC calendar dates', () => {
     expect(catalogBuilder.utcDateStamp).toBeTypeOf('function');
     expect(catalogBuilder.utcDateStamp(new Date('2027-01-02T23:59:59-08:00'))).toBe('2027-01-03');

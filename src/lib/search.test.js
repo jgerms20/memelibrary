@@ -39,6 +39,19 @@ const items = [
 ];
 
 describe('searchMemes', () => {
+  it.each([
+    ['stepped on my damn toe', 'Stepped on My Damn Toe'],
+    ['someone get these beggars out of here', 'Somebody Get These Beggars Out of Here'],
+    ['kid keeps saying lebron james', 'LeBron James Kid'],
+    ['kanye twitter screenshot', 'Kanye Tweet Screenshot'],
+  ])('recalls %s as %s', (query, expectedTitle) => {
+    expect(searchMemes(query, memes)[0]?.item.title).toBe(expectedTitle);
+  });
+
+  it('tolerates a small typo in a remembered quote', () => {
+    expect(searchMemes('stept on my dam toe', memes)[0]?.item.title).toBe('Stepped on My Damn Toe');
+  });
+
   it('ranks an exact quote above other results', () => {
     const [result] = searchMemes('back at it again with the white vans', items);
     expect(result.item.id).toBe('damn-daniel');

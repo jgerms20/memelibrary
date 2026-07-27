@@ -1,10 +1,13 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isSafeCatalogRecord } from '../src/lib/catalogSafety.js';
 
 const OUTPUT = resolve('src/data/catalog.generated.json');
 const MINIMUM = 1_000;
 const MAXIMUM = 5_000;
+
+export { isSafeCatalogRecord };
 export function utcDateStamp(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
@@ -44,7 +47,7 @@ export function validateCatalog(catalog, { minimum = MINIMUM, maximum = MAXIMUM,
     if (!record.indexedAt || Number.isNaN(Date.parse(record.indexedAt))) throw new Error(`Invalid indexedAt for ${record.id}`);
     if (!record.lastVerifiedAt || Number.isNaN(Date.parse(record.lastVerifiedAt))) throw new Error(`Invalid lastVerifiedAt for ${record.id}`);
     if (!['image', 'gif', 'video'].includes(record.mediaType)) throw new Error(`Invalid media type for ${record.id}`);
-    if (record.nsfw === true || record.spoiler === true) throw new Error(`Unsafe record: ${record.id}`);
+    if (!isSafeCatalogRecord(record)) throw new Error(`Unsafe record: ${record.id}`);
   }
   return catalog;
 }
@@ -257,6 +260,7 @@ async function collectSubreddit(subreddit, target, community) {
       const mediaUrl = normalizeMediaUrl(item.url);
       if (!mediaUrl || !/\.(?:gif|gifv|jpe?g|png|webp|mp4|webm)(?:\?|$)/i.test(item.url)) continue;
       const normalized = normalizeReddit({ ...item, url: mediaUrl }, community);
+      if (!isSafeCatalogRecord(normalized)) continue;
       records.set(normalized.id, normalized);
       if (records.size >= target) break;
     }
@@ -297,7 +301,7 @@ export function mergeCatalog(existing, incoming, maximum = MAXIMUM) {
 
 export async function refreshCatalog() {
   const refreshStartedAt = new Date();
-  const existingCatalog = (await loadExistingCatalog()).map(normalizeStoredRecord);
+  const existingCatalog = (await loadExistingCatalog()).map(normalizeStoredRecord).filter(isSafeCatalogRecord);
   const sources = [
     {
       name: 'Imgflip',
@@ -316,7 +320,7 @@ export async function refreshCatalog() {
   const incoming = [];
   for (const [index, result] of settledSources.entries()) {
     if (result.status === 'fulfilled') {
-      incoming.push(...result.value);
+      incoming.push(...result.value.filter(isSafeCatalogRecord));
     } else {
       console.warn(`Skipped ${sources[index].name}: ${result.reason?.message || result.reason}`);
     }

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SearchExperience from './components/SearchExperience.jsx';
+import MemePage from './components/MemePage.jsx';
 import { memes } from './data/memes.js';
 import { useSavedMemes } from './hooks/useSavedMemes.js';
 import { useTheme } from './hooks/useTheme.js';
@@ -45,24 +46,58 @@ function AboutView({ onSearch }) {
   );
 }
 
-function viewFromHash() {
+function routeFromHash() {
   const hash = window.location.hash.replace('#', '');
-  return ['search', 'trending', 'saved', 'about'].includes(hash) ? hash : 'search';
+  if (hash.startsWith('meme/')) {
+    try {
+      return { view: 'meme', memeId: decodeURIComponent(hash.slice(5)) };
+    } catch {
+      return { view: 'meme', memeId: '' };
+    }
+  }
+  return { view: ['search', 'trending', 'saved', 'about'].includes(hash) ? hash : 'search', memeId: null };
 }
 
 export default function App() {
-  const [view, setView] = useState(viewFromHash);
+  const [route, setRoute] = useState(routeFromHash);
+  const [libraryView, setLibraryView] = useState(() => {
+    const initial = routeFromHash().view;
+    return ['search', 'trending', 'saved'].includes(initial) ? initial : 'search';
+  });
+  const routeRef = useRef(route);
+  const libraryScrollRef = useRef(0);
   const { theme, toggleTheme } = useTheme();
   const saved = useSavedMemes();
+  const view = route.view;
 
   useEffect(() => {
-    const onHashChange = () => setView(viewFromHash());
+    const onHashChange = () => {
+      const previous = routeRef.current;
+      const next = routeFromHash();
+
+      if (next.view === 'meme' && previous.view !== 'meme') {
+        if (['search', 'trending', 'saved'].includes(previous.view)) setLibraryView(previous.view);
+        libraryScrollRef.current = window.scrollY;
+      } else if (['search', 'trending', 'saved'].includes(next.view)) {
+        setLibraryView(next.view);
+      }
+
+      routeRef.current = next;
+      setRoute(next);
+
+      if (previous.view === 'meme' && next.view !== 'meme' && !navigator.userAgent.includes('jsdom')) {
+        window.requestAnimationFrame(() => window.scrollTo({ top: libraryScrollRef.current }));
+      }
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   function go(nextView) {
-    setView(nextView);
+    const next = { view: nextView, memeId: null };
+    routeRef.current = next;
+    setRoute(next);
+    if (['search', 'trending', 'saved'].includes(nextView)) setLibraryView(nextView);
     window.location.hash = nextView;
     if (!navigator.userAgent.includes('jsdom')) window.scrollTo?.({ top: 0, behavior: 'smooth' });
   }
@@ -78,7 +113,12 @@ export default function App() {
         <nav aria-label="Primary navigation">
           <a className={view === 'search' ? 'is-active' : ''} href="#search" onClick={() => go('search')}>Search</a>
           <a className={view === 'trending' ? 'is-active' : ''} href="#trending" onClick={() => go('trending')}>Trending</a>
-          <a className={view === 'saved' ? 'is-active' : ''} href="#saved" onClick={() => go('saved')}>Saved <span>{saved.savedIds.length}</span></a>
+          <a className={view === 'saved' ? 'is-active' : ''} href="#saved" onClick={() => go('saved')} aria-label="Saved">
+            <span className="nav-label">Saved</span>
+            <span className={`nav-count${saved.savedIds.length ? '' : ' is-empty'}`} aria-hidden="true">
+              {saved.savedIds.length}
+            </span>
+          </a>
           <a className={view === 'about' ? 'is-active' : ''} href="#about" onClick={() => go('about')}>About</a>
         </nav>
         <button
@@ -91,17 +131,27 @@ export default function App() {
           <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
       </header>
-      {view === 'about' ? (
-        <AboutView onSearch={() => go('search')} />
-      ) : (
-        <SearchExperience
+      {view === 'about' ? <AboutView onSearch={() => go('search')} /> : null}
+      {view !== 'about' ? (
+        <div hidden={view === 'meme'}>
+          <SearchExperience
+            items={memes}
+            view={view === 'meme' ? libraryView : view}
+            savedIds={saved.savedIds}
+            isSaved={saved.isSaved}
+            onToggleSaved={saved.toggleSaved}
+          />
+        </div>
+      ) : null}
+      {view === 'meme' ? (
+        <MemePage
+          item={memes.find((item) => item.id === route.memeId)}
           items={memes}
-          view={view}
-          savedIds={saved.savedIds}
+          returnView={libraryView}
           isSaved={saved.isSaved}
           onToggleSaved={saved.toggleSaved}
         />
-      )}
+      ) : null}
       <footer>
         <p><strong>Meme Library</strong> remembers the internet with you.</p>
         <p>{memes.length} source-linked images, GIFs, videos, and reaction posts.</p>

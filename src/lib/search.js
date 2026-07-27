@@ -26,9 +26,14 @@ const SYNONYM_GROUPS = [
   ['song', 'music', 'singing', 'sings'],
   ['dance', 'dancing', 'moves'],
   ['deception', 'bait', 'trick', 'rickroll', 'rickrolled'],
+  ['someone', 'somebody', 'person'],
+  ['toe', 'toes', 'corn', 'corns', 'foot', 'feet'],
+  ['tweet', 'twitter', 'post', 'screenshot'],
+  ['leave', 'leaving', 'exit', 'exiting', 'walkout'],
 ];
 
 const SYNONYM_INDEX = new Map();
+const ITEM_FIELD_CACHE = new WeakMap();
 for (const group of SYNONYM_GROUPS) {
   for (const term of group) SYNONYM_INDEX.set(term, group);
 }
@@ -68,6 +73,53 @@ function tokenize(value) {
   return normalizeText(value).split(' ').filter((token) => token.length > 1);
 }
 
+function stem(token) {
+  if (token.length > 5 && token.endsWith('ing')) return token.slice(0, -3);
+  if (token.length > 4 && token.endsWith('ed')) return token.slice(0, -2);
+  if (token.length > 4 && token.endsWith('es')) return token.slice(0, -2);
+  if (token.length > 3 && token.endsWith('s')) return token.slice(0, -1);
+  return token;
+}
+
+function ngrams(value, size = 3) {
+  const padded = ` ${normalizeText(value)} `;
+  const grams = new Set();
+  for (let index = 0; index <= padded.length - size; index += 1) grams.add(padded.slice(index, index + size));
+  return grams;
+}
+
+function diceSimilarityWithGrams(left, rightGrams) {
+  if (!left || !rightGrams?.size) return 0;
+  const leftGrams = ngrams(left);
+  let intersection = 0;
+  for (const gram of leftGrams) if (rightGrams.has(gram)) intersection += 1;
+  return (2 * intersection) / (leftGrams.size + rightGrams.size);
+}
+
+function oneEditApart(left, right) {
+  if (left === right) return true;
+  if (Math.abs(left.length - right.length) > 1) return false;
+  let leftIndex = 0;
+  let rightIndex = 0;
+  let edits = 0;
+  while (leftIndex < left.length && rightIndex < right.length) {
+    if (left[leftIndex] === right[rightIndex]) {
+      leftIndex += 1;
+      rightIndex += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (left.length > right.length) leftIndex += 1;
+    else if (right.length > left.length) rightIndex += 1;
+    else {
+      leftIndex += 1;
+      rightIndex += 1;
+    }
+  }
+  return edits + Number(leftIndex < left.length || rightIndex < right.length) <= 1;
+}
+
 function expandTokens(tokens) {
   const expanded = new Set(tokens);
   for (const token of tokens) {
@@ -81,17 +133,38 @@ function valuesFor(item, field) {
   return Array.isArray(value) ? value : [value ?? ''];
 }
 
+function indexedFields(item) {
+  const cached = ITEM_FIELD_CACHE.get(item);
+  if (cached) return cached;
+  const fields = [];
+  for (const [field, weight] of Object.entries(FIELD_WEIGHTS)) {
+    for (const rawValue of valuesFor(item, field)) {
+      const text = normalizeText(rawValue);
+      if (!text) continue;
+      const tokenList = tokenize(text);
+      fields.push({
+        weight,
+        text,
+        tokenList,
+        tokens: new Set(tokenList),
+        stems: new Set(tokenList.map(stem)),
+        grams: text.length >= 8 ? ngrams(text) : null,
+      });
+    }
+  }
+  ITEM_FIELD_CACHE.set(item, fields);
+  return fields;
+}
+
 function scoreItem(item, query) {
   const queryText = normalizeText(query);
   const originalTokens = tokenize(queryText);
+  const queryStems = new Set(originalTokens.map(stem));
   const expandedTokens = expandTokens(originalTokens);
   const matchedTerms = new Set();
   let score = 0;
 
-  for (const [field, weight] of Object.entries(FIELD_WEIGHTS)) {
-    for (const rawValue of valuesFor(item, field)) {
-      const fieldText = normalizeText(rawValue);
-      if (!fieldText) continue;
+  for (const { weight, text: fieldText, tokenList, tokens: fieldTokens, stems: fieldStems, grams } of indexedFields(item)) {
 
       if (queryText.length > 2 && fieldText.includes(queryText)) {
         score += weight * 8;
@@ -99,7 +172,6 @@ function scoreItem(item, query) {
         score += weight * 4;
       }
 
-      const fieldTokens = new Set(tokenize(fieldText));
       for (const token of originalTokens) {
         if (fieldTokens.has(token)) {
           score += weight * 2.5;
@@ -112,12 +184,31 @@ function scoreItem(item, query) {
           score += weight * 0.75;
         }
       }
-    }
+
+      for (const token of originalTokens) {
+        if (fieldTokens.has(token)) continue;
+        if (fieldStems.has(stem(token)) && queryStems.has(stem(token))) {
+          score += weight * 1.25;
+          matchedTerms.add(token);
+          continue;
+        }
+        if (token.length >= 4 && tokenList.some((fieldToken) => oneEditApart(token, fieldToken))) {
+          score += weight;
+          matchedTerms.add(token);
+        }
+      }
+
+      if (queryText.length >= 8 && fieldText.length >= 8) {
+        const similarity = diceSimilarityWithGrams(queryText, grams);
+        if (similarity >= 0.34) score += weight * similarity * 5;
+      }
   }
 
   if (originalTokens.length > 1 && matchedTerms.size === originalTokens.length) {
     score += 24;
   }
+
+  if (item.featuredConfidence && score > 0) score += Math.max(0, item.featuredConfidence - 80) * 0.8;
 
   return { score, matchedTerms: [...matchedTerms] };
 }
