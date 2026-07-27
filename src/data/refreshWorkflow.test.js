@@ -23,6 +23,8 @@ describe('library refresh workflow', () => {
     expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('contents: write');
     expect(workflow).toContain('ref: main');
+    expect(workflow).toContain('actions/checkout@v7');
+    expect(workflow).toContain('actions/setup-node@v7');
     const jobHeader = workflow.slice(workflow.indexOf('jobs:'), workflow.indexOf('steps:'));
     expect(jobHeader).not.toContain('VERCEL_TOKEN');
     expect(workflow).toContain('npm run catalog:refresh');
