@@ -6,6 +6,7 @@ import { isSafeCatalogRecord } from '../src/lib/catalogSafety.js';
 const OUTPUT = resolve('src/data/catalog.generated.json');
 const MINIMUM = 1_000;
 const MAXIMUM = 5_000;
+const PROVENANCE_STATUSES = new Set(['confirmed-original', 'derivative-reuse', 'uncertain']);
 
 export { isSafeCatalogRecord };
 export function utcDateStamp(date = new Date()) {
@@ -47,6 +48,9 @@ export function validateCatalog(catalog, { minimum = MINIMUM, maximum = MAXIMUM,
     if (!record.indexedAt || Number.isNaN(Date.parse(record.indexedAt))) throw new Error(`Invalid indexedAt for ${record.id}`);
     if (!record.lastVerifiedAt || Number.isNaN(Date.parse(record.lastVerifiedAt))) throw new Error(`Invalid lastVerifiedAt for ${record.id}`);
     if (!['image', 'gif', 'video'].includes(record.mediaType)) throw new Error(`Invalid media type for ${record.id}`);
+    if (record.provenanceStatus && !PROVENANCE_STATUSES.has(record.provenanceStatus)) {
+      throw new Error(`Invalid provenance status for ${record.id}`);
+    }
     if (!isSafeCatalogRecord(record)) throw new Error(`Unsafe record: ${record.id}`);
   }
   return catalog;
@@ -123,9 +127,14 @@ function mediaTypeFor(url) {
 
 function normalizeStoredRecord(record) {
   const mediaUrl = normalizeMediaUrl(record.mediaUrl);
-  if (!mediaUrl || mediaUrl === record.mediaUrl) return record;
-  return {
+  const normalizedProvenance = record.provenanceStatus ? record : {
     ...record,
+    provenanceStatus: 'uncertain',
+    provenanceNote: record.provenanceNote ?? 'Imported from an automated source feed; original provenance has not yet been confirmed.',
+  };
+  if (!mediaUrl || mediaUrl === record.mediaUrl) return normalizedProvenance;
+  return {
+    ...normalizedProvenance,
     mediaUrl,
     downloadUrl: mediaUrl,
     mediaType: mediaTypeFor(mediaUrl),
@@ -174,6 +183,8 @@ function normalizeReddit(item, community) {
     peak: `${Number(item.ups || 0).toLocaleString()} upvotes when indexed`,
     trendScore: Number(item.ups || 0),
     featuredConfidence: 84,
+    provenanceStatus: 'uncertain',
+    provenanceNote: 'This community post is a discovery source; its underlying original media has not been independently verified.',
     useCases: ['React to a conversation', 'Reply with a visual mood', `Browse ${community}`],
     lifecycle: lifecycleFor(item.ups),
     timelineLabels: { start: 'Posted', peak: 'Indexed', now: '2026' },
@@ -221,6 +232,8 @@ function normalizeImgflip(item) {
     peak: 'Evergreen template',
     trendScore: Math.round((item.width || 1) * (item.height || 1) / 1000),
     featuredConfidence: 82,
+    provenanceStatus: 'uncertain',
+    provenanceNote: 'The template is sourced from Imgflip’s public catalog; the underlying first publication has not been independently verified.',
     useCases: ['Create a caption meme', 'Identify a meme format', 'Find the clean template'],
     lifecycle: [8, 22, 44, 72, 88, 100, 86, 74, 66, 58, 52, 48],
     timelineLabels: { start: 'Template', peak: 'Popular', now: '2026' },

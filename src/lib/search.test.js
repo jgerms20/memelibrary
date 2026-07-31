@@ -93,6 +93,24 @@ describe('searchMemes', () => {
     expect(results.map((result) => result.item.id)).toEqual(['side-eye-chloe']);
   });
 
+  it('never returns a known reuse for an original-intent search', () => {
+    const candidates = [
+      { ...items[0], id: 'original', provenanceStatus: 'confirmed-original' },
+      { ...items[0], id: 'reused-sound', provenanceStatus: 'derivative-reuse', title: 'Parody using the sound' },
+    ];
+
+    expect(searchMemes('white vans', candidates).map((result) => result.item.id)).toEqual(['original']);
+  });
+
+  it('can restrict results to confirmed original sources', () => {
+    const candidates = [
+      { ...items[0], id: 'confirmed', provenanceStatus: 'confirmed-original' },
+      { ...items[1], id: 'uncertain', provenanceStatus: 'uncertain' },
+    ];
+
+    expect(searchMemes('', candidates, { provenance: 'confirmed-original' }).map((result) => result.item.id)).toEqual(['confirmed']);
+  });
+
   it('returns the catalog in stable order for an empty query', () => {
     const results = searchMemes('', items);
     expect(results.map((result) => result.item.id)).toEqual([

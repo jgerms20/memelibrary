@@ -43,6 +43,19 @@ describe('SearchExperience', () => {
     expect(screen.queryByTitle('Today Drained Me post')).not.toBeInTheDocument();
   });
 
+  it('plays the verified original toe video rather than a sound reuse', () => {
+    renderExperience();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'stepped on my damn toe' } });
+    fireEvent.submit(search.closest('form'));
+    expect(screen.getByRole('note', { name: 'Origin verification' })).toHaveTextContent(/confirmed original/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Play Stepped on My Damn Toe' }));
+    expect(screen.getByTitle('Stepped on My Damn Toe video player')).toHaveAttribute(
+      'src',
+      expect.stringContaining('youtube-nocookie.com/embed/HwsFvtD31Bs'),
+    );
+  });
+
   it('shows the live searchable library size', () => {
     renderExperience();
     expect(screen.getByText(`SEARCH ${memes.length.toLocaleString()} CULTURAL REFERENCES`)).toBeInTheDocument();
@@ -66,6 +79,22 @@ describe('SearchExperience', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Image' }));
     expect(screen.getByRole('heading', { name: 'Woman Yelling at a Cat' })).toBeInTheDocument();
     expect(screen.queryByText('Keyboard Cat', { selector: 'h2' })).not.toBeInTheDocument();
+  });
+
+  it('uses intentional media-type controls and filters video and GIF results separately from images', () => {
+    renderExperience();
+    expect(screen.getByRole('group', { name: 'Media type' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Video & GIF' }));
+    expect(screen.getByRole('button', { name: 'Video & GIF' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('link', { name: 'Open Woman Yelling at a Cat' })).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText(/video|gif/i).length).toBeGreaterThan(0);
+  });
+
+  it('shows source-verification evidence and can limit results to confirmed originals', () => {
+    renderExperience();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmed original' }));
+    expect(screen.getByRole('button', { name: 'Confirmed original' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('note', { name: 'Origin verification' })).toHaveTextContent(/confirmed original/i);
   });
 
   it('filters the catalog with accessible platform and community chips', () => {

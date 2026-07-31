@@ -132,6 +132,21 @@ describe('catalog builder', () => {
       .toThrow(/duplicate id|invalid media url/i);
   });
 
+  it('rejects unknown provenance states during catalog validation', () => {
+    const record = {
+      id: 'bad-provenance',
+      mediaUrl: 'https://cdn.example/source.jpg',
+      sourceUrl: 'https://example.com/source',
+      indexedAt: '2026-01-01',
+      lastVerifiedAt: '2026-01-01T00:00:00.000Z',
+      mediaType: 'image',
+      provenanceStatus: 'probably-original',
+    };
+
+    expect(() => catalogBuilder.validateCatalog([record], { minimum: 1, maximum: 5 }))
+      .toThrow(/invalid provenance status/i);
+  });
+
   it('retains existing records before incoming duplicates', () => {
     const existing = [{ id: 'same-id', mediaUrl: 'https://cdn.example/old.gif', indexedAt: '2026-01-01' }];
     const incoming = [{ id: 'same-id', mediaUrl: 'https://cdn.example/new.gif', indexedAt: '2027-01-01' }];

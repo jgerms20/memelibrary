@@ -416,6 +416,40 @@
   letter-spacing: 0.08em;
 }
 
+.media-provenance {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.provenance-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--rule);
+  background: var(--paper-bright);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.provenance-note strong,
+.provenance-badge {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.provenance-note p { margin: 5px 0; }
+.provenance-note.is-confirmed-original { border-color: var(--teal); }
+.provenance-note.is-uncertain { border-color: var(--accent); }
+.provenance-links { font-size: 0.74rem; }
+.provenance-links a { color: inherit; }
+
 .play-button {
   position: absolute;
   z-index: 2;

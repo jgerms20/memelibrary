@@ -30,7 +30,7 @@ export default function SearchExperience({
 }) {
   const [draftQuery, setDraftQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
-  const [filters, setFilters] = useState({ media: 'all', platform: 'all', community: 'all' });
+  const [filters, setFilters] = useState({ media: 'all', platform: 'all', community: 'all', provenance: 'all' });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const platformOptions = useMemo(() => options(items, 'platform'), [items]);
   const visibleItems = useMemo(() => {
@@ -131,7 +131,7 @@ export default function SearchExperience({
               <a className="catalog-request" href={catalogRequestUrl(activeQuery)} target="_blank" rel="noreferrer">Request this meme</a>
             ) : null}
             {Object.values(filters).some((value) => value !== 'all') ? (
-              <button type="button" onClick={() => { setFilters({ media: 'all', platform: 'all', community: 'all' }); setVisibleCount(PAGE_SIZE); }}>Clear filters</button>
+              <button type="button" onClick={() => { setFilters({ media: 'all', platform: 'all', community: 'all', provenance: 'all' }); setVisibleCount(PAGE_SIZE); }}>Clear filters</button>
             ) : null}
           </div>
         )}

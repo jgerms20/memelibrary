@@ -54,14 +54,14 @@ describe('App shell', () => {
     const search = screen.getByRole('searchbox');
     fireEvent.change(search, { target: { value: 'stepped on my damn toe' } });
     fireEvent.submit(search.closest('form'));
-    fireEvent.click(screen.getByRole('button', { name: 'Motion' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Video & GIF' }));
 
     navigate('#meme/stepped-on-my-damn-toe');
     expect(await screen.findByRole('heading', { level: 1, name: 'Stepped on My Damn Toe' })).toBeInTheDocument();
 
     navigate('#search');
     expect(await screen.findByRole('searchbox')).toHaveValue('stepped on my damn toe');
-    expect(screen.getByRole('button', { name: 'Motion' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Video & GIF' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('loads a shareable meme detail route directly', () => {

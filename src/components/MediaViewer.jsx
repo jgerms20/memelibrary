@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { provenanceCopyFor } from '../lib/provenance.js';
 
 function PlayIcon() {
   return <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 7.5 25 16 11 24.5Z" /></svg>;
 }
 
-function MediaShell({ children, frameClass = '', label, sourceAction = null }) {
+function MediaShell({ children, frameClass = '', label, provenance, sourceAction = null }) {
   return (
     <div className="media-shell">
       <div className={`media-frame ${frameClass}`.trim()}>{children}</div>
       <div className="media-meta">
         <span className="media-caption">{label}</span>
+        <span className="media-provenance">{provenance}</span>
         {sourceAction}
       </div>
     </div>
@@ -20,7 +22,7 @@ function mediaLabel(item) {
   return item.mediaLabel ?? (item.mediaType === 'gif'
     ? 'REACTION GIF'
     : item.mediaType === 'video'
-      ? 'ORIGINAL VIDEO'
+      ? item.youtubeId ? 'VIDEO PREVIEW' : 'VIDEO'
       : 'SOURCE IMAGE');
 }
 
@@ -34,6 +36,7 @@ export default function MediaViewer({ item }) {
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
   const [directVideoFailed, setDirectVideoFailed] = useState(false);
+  const provenance = provenanceCopyFor(item);
 
   if (failed) {
     return (
@@ -47,7 +50,7 @@ export default function MediaViewer({ item }) {
 
   if (item.directVideoUrl && !directVideoFailed) {
     return (
-      <MediaShell frameClass="media-video" label={mediaLabel(item)}>
+      <MediaShell frameClass="media-video" label={mediaLabel(item)} provenance={provenance.label}>
         <video
           src={item.directVideoUrl}
           poster={item.posterUrl}
@@ -65,7 +68,7 @@ export default function MediaViewer({ item }) {
 
   if (item.youtubeId && playing) {
     return (
-      <MediaShell frameClass="media-video" label={mediaLabel(item)}>
+      <MediaShell frameClass="media-video" label={mediaLabel(item)} provenance={provenance.label}>
         <iframe
           title={`${item.title} video player`}
           src={`https://www.youtube-nocookie.com/embed/${item.youtubeId}?autoplay=1&rel=0`}
@@ -78,7 +81,7 @@ export default function MediaViewer({ item }) {
 
   if (isDirectVideoMedia(item)) {
     return (
-      <MediaShell frameClass="media-video" label={mediaLabel(item)}>
+      <MediaShell frameClass="media-video" label={mediaLabel(item)} provenance={provenance.label}>
         <video src={item.mediaUrl} controls muted loop playsInline preload="metadata" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       </MediaShell>
     );
@@ -92,7 +95,7 @@ export default function MediaViewer({ item }) {
       </a>
     );
     return (
-      <MediaShell frameClass="media-embed" label={mediaLabel(item)} sourceAction={sourceAction}>
+      <MediaShell frameClass="media-embed" label={mediaLabel(item)} provenance={provenance.label} sourceAction={sourceAction}>
         <div className="embed-fallback-copy"><strong>{item.title}</strong><span>Public post preview</span></div>
         <iframe
           title={`${item.title} post`}
@@ -106,7 +109,7 @@ export default function MediaViewer({ item }) {
   }
 
   return (
-    <MediaShell frameClass="media-still" label={mediaLabel(item)}>
+    <MediaShell frameClass="media-still" label={mediaLabel(item)} provenance={provenance.label}>
         <img
           src={item.mediaUrl}
           alt={item.mediaType === 'video' ? `${item.title} video thumbnail` : item.visual?.[0] ?? item.title}

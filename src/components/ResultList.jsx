@@ -2,6 +2,12 @@ function SaveIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z" /></svg>;
 }
 
+function mediaTypeLabel(type) {
+  if (type === 'video') return 'Video';
+  if (type === 'gif') return 'GIF';
+  return 'Image';
+}
+
 export default function ResultList({ results, selectedId, isSaved = () => false, onToggleSaved = () => {} }) {
   return (
     <div className="result-list" aria-label="Search results">
@@ -19,7 +25,7 @@ export default function ResultList({ results, selectedId, isSaved = () => false,
               <span className="result-rank">{String(index + 1).padStart(2, '0')}</span>
               <span className="row-thumb">
                 <img src={result.item.mediaUrl} alt="" loading="lazy" />
-                <i>{result.item.mediaType}</i>
+                <i aria-label={mediaTypeLabel(result.item.mediaType)}>{mediaTypeLabel(result.item.mediaType)}</i>
               </span>
               <span className="row-copy">
                 <strong>{result.item.title}</strong>

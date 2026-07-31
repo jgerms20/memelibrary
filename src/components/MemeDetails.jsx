@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import LifecycleChart from './LifecycleChart.jsx';
 import MediaViewer from './MediaViewer.jsx';
 import SourceTrail from './SourceTrail.jsx';
+import { provenanceCopyFor } from '../lib/provenance.js';
 
 function ActionIcon({ type }) {
   if (type === 'save') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z" /></svg>;
@@ -18,6 +19,7 @@ export default function MemeDetails({ result, compact = false, isSaved = false, 
   const hasMatchScore = Number.isFinite(confidence);
   const [copyStatus, setCopyStatus] = useState('idle');
   const [showExplanation, setShowExplanation] = useState(false);
+  const provenance = provenanceCopyFor(item);
 
   useEffect(() => {
     setCopyStatus('idle');
@@ -40,6 +42,7 @@ export default function MemeDetails({ result, compact = false, isSaved = false, 
         <h2>About this meme</h2>
         <dl>
           <div><dt>Origin</dt><dd><FactLink href={item.sourceUrl}><span className="platform-badge">{item.originPlatform ?? item.platform}</span></FactLink></dd></div>
+          <div><dt>Evidence</dt><dd><span className={`provenance-badge is-${item.provenanceStatus ?? 'uncertain'}`}>{provenance.label}</span></dd></div>
           <div><dt>Captured in</dt><dd>{item.capturedIn ?? item.location}</dd></div>
           <div><dt>First upload</dt><dd><FactLink href={item.firstUploadUrl}>{item.firstUpload}</FactLink></dd></div>
           <div><dt>Creator</dt><dd><FactLink href={item.creatorUrl}>{item.creator}</FactLink></dd></div>
@@ -75,9 +78,18 @@ export default function MemeDetails({ result, compact = false, isSaved = false, 
           <div>
             <span className="platform-badge">{item.platform}</span>
             <h2>{item.title}</h2>
-            <p>{item.sourceKind ?? (item.mediaType === 'video' ? 'Original video' : item.mediaType === 'gif' ? 'Reaction GIF' : 'Source image')} · {item.firstUpload}</p>
+          <p>{item.sourceKind ?? (item.mediaType === 'video' ? 'Original video' : item.mediaType === 'gif' ? 'Reaction GIF' : 'Source image')} · {item.firstUpload}</p>
           </div>
           <span className="mobile-confidence">{hasMatchScore ? `${confidence}% match` : 'Featured'}</span>
+        </div>
+        <div className={`provenance-note is-${item.provenanceStatus ?? 'uncertain'}`} role="note" aria-label="Origin verification">
+          <strong>{provenance.label}</strong>
+          <p>{item.provenanceNote ?? provenance.description}</p>
+          {item.provenanceEvidence?.length ? (
+            <span className="provenance-links">Evidence: {item.provenanceEvidence.map((source, index) => (
+              <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label}{index < item.provenanceEvidence.length - 1 ? ', ' : ''}</a>
+            ))}</span>
+          ) : null}
         </div>
         <div className="why-copy">
           <div className="why-heading">

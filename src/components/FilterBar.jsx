@@ -26,13 +26,23 @@ export default function FilterBar({ filters, platformOptions, resultCount, onCha
     <div className="filter-bar" aria-label="Search filters">
       <div className="filter-scroll">
         <FilterGroup
-          label="Format"
+          label="Media type"
           value={filters.media}
           onChange={(value) => onChange('media', value)}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'video', label: 'Motion' },
+            { value: 'all', label: 'All media' },
+            { value: 'video', label: 'Video & GIF' },
             { value: 'image', label: 'Image' },
+          ]}
+        />
+        <FilterGroup
+          label="Origin evidence"
+          value={filters.provenance}
+          onChange={(value) => onChange('provenance', value)}
+          options={[
+            { value: 'all', label: 'All eligible' },
+            { value: 'confirmed-original', label: 'Confirmed original' },
+            { value: 'uncertain', label: 'Not yet confirmed' },
           ]}
         />
         <FilterGroup

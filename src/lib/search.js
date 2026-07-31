@@ -1,3 +1,5 @@
+import { isOriginalIntentEligible, provenanceStatusFor } from './provenance.js';
+
 const FIELD_WEIGHTS = {
   title: 11,
   aliases: 9,
@@ -215,15 +217,16 @@ function scoreItem(item, query) {
 
 export function searchMemes(query, items, filter = 'all') {
   const facets = typeof filter === 'string'
-    ? { media: filter, platform: 'all', community: 'all' }
-    : { media: 'all', platform: 'all', community: 'all', ...filter };
+    ? { media: filter, platform: 'all', community: 'all', provenance: 'all' }
+    : { media: 'all', platform: 'all', community: 'all', provenance: 'all', ...filter };
   const eligible = items.filter((item) => {
     const mediaMatches = facets.media === 'all'
       || item.mediaType === facets.media
       || (facets.media === 'video' && item.mediaType === 'gif');
     const platformMatches = facets.platform === 'all' || item.platform === facets.platform;
     const communityMatches = facets.community === 'all' || communityFacetFor(item) === facets.community;
-    return mediaMatches && platformMatches && communityMatches;
+    const provenanceMatches = facets.provenance === 'all' || provenanceStatusFor(item) === facets.provenance;
+    return isOriginalIntentEligible(item) && mediaMatches && platformMatches && communityMatches && provenanceMatches;
   });
   const queryText = normalizeText(query);
   const queryTokens = tokenize(queryText);
